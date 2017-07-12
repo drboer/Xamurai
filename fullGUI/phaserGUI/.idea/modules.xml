@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$USER_HOME$/practiques_15_16/xalocGUI/Common/.idea/Common.iml" filepath="$USER_HOME$/practiques_15_16/xalocGUI/Common/.idea/Common.iml" />
+      <module fileurl="file://$USER_HOME$/practiques_15_16/xalocGUI/arcimboldoGUI/.idea/arcimboldoGUI.iml" filepath="$USER_HOME$/practiques_15_16/xalocGUI/arcimboldoGUI/.idea/arcimboldoGUI.iml" />
+      <module fileurl="file://$USER_HOME$/practiques_15_16/xalocGUI/phaserGUI/.idea/phaserGUI.iml" filepath="$USER_HOME$/practiques_15_16/xalocGUI/phaserGUI/.idea/phaserGUI.iml" />
+      <module fileurl="file://$USER_HOME$/practiques_15_16/xalocGUI/.idea/xalocGUI.iml" filepath="$USER_HOME$/practiques_15_16/xalocGUI/.idea/xalocGUI.iml" />
+    </modules>
+  </component>
+</project>

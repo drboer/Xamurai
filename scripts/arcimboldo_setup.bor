@@ -1,0 +1,32 @@
+[LOCAL]
+#ALBA_local_grid
+python_local_interpreter:
+path_local_phaser: /mnt/hpcsoftware/share/phenix/phenix.phaser
+path_local_shelxe: /mnt/hpcsoftware/share/shelx/shelxe
+path_local_borges: /mnt/hpcsoftware/share/arcimboldo/BORGES_MATRIX
+path_local_arcimboldo: /mnt/hpcsoftware/share/arcimboldo/ARCIMBOLDO_BORGES
+
+[SLURM]
+partition:
+
+# Supercomputing environment parameters
+[GRID]
+# BORGES parameters for "borges" database generation
+number_of_pdbs_per_tar: 5
+number_of_parallel_grid_jobs: 7000
+type_local: SLURM
+type_remote: SLURM
+path_remote_sgepy:
+#ALBA_remote_grid
+path_remote_phaser: /mnt/hpcsoftware/share/phenix/phenix.phaser
+path_remote_shelxe: /mnt/hpcsoftware/share/shelx/shelxe
+path_remote_borges: /mnt/hpcsoftware/share/arcimboldo/BORGES_MATRIX
+path_remote_arcimboldo: /mnt/hpcsoftware/share/arcimboldo/ARCIMBOLDO_BORGES
+python_remote_interpreter:
+remote_frontend_username: mroda
+remote_frontend_host: 84.89.244.149
+remote_frontend_port: 22
+path_remote_sgepy:
+home_frontend_directory:
+remote_fylesystem_isnfs: True
+remote_frontend_prompt: $

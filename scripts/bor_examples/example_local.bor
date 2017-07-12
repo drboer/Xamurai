@@ -1,0 +1,25 @@
+[CONNECTION]
+distribute_computing: multiprocessing
+
+[GENERAL]
+working_directory= /full/path/to/working_directory
+mtz_path: %(working_directory)s/file.mtz
+hkl_path: %(working_directory)s/file.hkl
+
+[ARCIMBOLDO]
+name_job: example 
+molecular_weight: 35000.0
+i_label: IMEAN 
+sigi_label: SIGIMEAN
+number_of_component: 1
+fragment_to_search: 4
+helix_length: 12
+##For diferent helix lengths you can use the keywords below
+#helix_length_1: 20
+#helix_length_2: 18
+#helix_length_3: 14
+#helix_length_4: 10
+
+[LOCAL] 
+path_local_phaser: /full/path/to/phaser
+path_local_shelxe: /full/path/to/shelxe

@@ -1,0 +1,23 @@
+[SLURM]
+partition:
+
+[GRID]
+number_of_pdbs_per_tar: 5
+number_of_parallel_grid_jobs: 7000
+type_local: SLURM
+type_remote: SLURM
+path_remote_sgepy:
+#ALBA
+path_remote_phaser: /mnt/hpcsoftware/share/phenix-dev-2174/build/bin/phenix.phaser
+path_remote_shelxe: /mnt/hpcsoftware/share/SHELX/shelxe
+path_remote_borges: /beamlines/bl13/commissioning/software/ARCIMBOLDO/BORGES_MATRIX
+path_remote_arcimboldo: /beamlines/bl13/commissioning/software/ARCIMBOLDO/ARCIMBOLDO_BORGES
+python_remote_interpreter:
+remote_frontend_username: username
+remote_frontend_host: 84.89.244.149
+remote_frontend_port: 22
+path_remote_sgepy:
+home_frontend_directory:
+remote_fylesystem_isnfs: True
+remote_frontend_prompt: $
+
