@@ -403,15 +403,21 @@ class MainWindow(MainWindowLayout):
                     # MR: 2017 05 04
                     # If there is an .html, it should be displayed instead
                     html_summary = "/".join(selected_file.split("/")[:-1] + ["summary.html"])
+                    #html_summary = "summary.html"
+                    print 'HTML file at %s' % html_summary
                     if os.path.isfile(html_summary):
+                        curdir = os.getcwd()
+                        os.chdir( "/"+str("/".join(selected_file.split("/")[1:-1])) )
                         with open(html_summary,'r') as summary:
                             html = summary.read()
+                        print 'Current dir %s' % os.getcwd()
                         self.textOutput.setHtml(html)
-                        self.textOutput.verticalScrollBar().setValue(380)
+                        #os.chdir(curdir)
+                        #self.textOutput.verticalScrollBar().setValue(380)
                     # If there is not, display the log and continue as usual
                     else:
                         self.textOutput.setPlainText(text)
-                        self.scroll_to_end()
+                    self.scroll_to_end()
                     textlines = text.splitlines()
                     self.displayInfo('Log file contents updated')
                     for line in textlines:

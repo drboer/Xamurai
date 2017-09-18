@@ -1,13 +1,15 @@
 [LOCAL]
-#ALBA_local_grid
+# Third party software paths
+# New phaser stands for phaser 2.6.0
+#ALBA_local
 python_local_interpreter:
-path_local_phaser: /mnt/hpcsoftware/share/phenix/phenix.phaser
-path_local_shelxe: /mnt/hpcsoftware/share/shelx/shelxe
-path_local_borges: /mnt/hpcsoftware/share/arcimboldo/BORGES_MATRIX
-path_local_arcimboldo: /mnt/hpcsoftware/share/arcimboldo/ARCIMBOLDO_BORGES
+path_local_phaser: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/phaser
+path_local_shelxe: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/shelxe
+path_local_borges: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/BORGES_MATRIX
+path_local_arcimboldo: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/ARCIMBOLDO_BORGES
 
 [SLURM]
-partition:
+partition: short
 
 # Supercomputing environment parameters
 [GRID]
@@ -17,13 +19,13 @@ number_of_parallel_grid_jobs: 7000
 type_local: SLURM
 type_remote: SLURM
 path_remote_sgepy:
-#ALBA_remote_grid
-path_remote_phaser: /mnt/hpcsoftware/share/phenix/phenix.phaser
-path_remote_shelxe: /mnt/hpcsoftware/share/shelx/shelxe
-path_remote_borges: /mnt/hpcsoftware/share/arcimboldo/BORGES_MATRIX
-path_remote_arcimboldo: /mnt/hpcsoftware/share/arcimboldo/ARCIMBOLDO_BORGES
+#ALBA
+path_remote_phaser: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/phaser
+path_remote_shelxe: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/shelxe
+path_remote_borges: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/BORGES_MATRIX
+path_remote_arcimboldo: /mnt/hpcsoftware/share/ccp4/ccp4-linux64/bin/ARCIMBOLDO_BORGES
 python_remote_interpreter:
-remote_frontend_username: mroda
+remote_frontend_username: username
 remote_frontend_host: 84.89.244.149
 remote_frontend_port: 22
 path_remote_sgepy:

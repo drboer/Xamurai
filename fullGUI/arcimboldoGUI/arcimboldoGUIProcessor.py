@@ -85,61 +85,44 @@ class ArcimboldoProcessor(FormProcessor):
                 # Copy input files
                 mtz_file = os.path.join(self.work_dir, "input_reflections.mtz")
                 os.system("ln -s " + os.path.realpath(mtz_in) + " " + mtz_file)
+                ##################################################################################
                 # Create the .hkl
+                # RB 20170727: do we need this?
                 hkl_file = os.path.join(self.work_dir, "input_reflections.hkl")
                 with open(os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "mtz2khl.in"), "w") as f:
                     if self.form.mtz_column_stack.currentIndex() == 0:  # I
                         f.write("OUTPUT SHELX\nLABIN I=" + i_column + " SIGI=" + sig_column + "\nEND")
                     else:  # F
                         f.write("OUTPUT SHELX\nLABIN FP=" + f_column + " SIGFP=" + sig_column + "\nEND")
+                #print 'ssh %s@%s "mtz2various HKLIN %s HKLOUT %s < %s > %s"' \
+                #          % (bl13_GUI_ccp4_user, bl13_GUI_ccp4_server, mtz_in, hkl_file, \
+                #             os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "mtz2khl.in"), \
+                #             os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "mtz2khl.out"))
                 os.system('ssh %s@%s "mtz2various HKLIN %s HKLOUT %s < %s > %s"'
                           % (bl13_GUI_ccp4_user, bl13_GUI_ccp4_server, mtz_in, hkl_file,
                              os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "mtz2khl.in"),
                              os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "mtz2khl.out")))
+                # End of create.hkl file? ###############################################################
+                
                 # Collect data for the configuration .bor file for arcimboldo
-                # Copy input files
-                os.system("cp " + seq_in + " " + os.path.join(self.work_dir, "input_fasta.seq"))
-                # Get the molecular weight from the sequence file
-                with open(os.path.join(self.work_dir, "input_fasta.seq"), "r") as f:
-                    lines = [line.rstrip('\n') for line in f]
-                if lines[0].startswith(">"):
-                    sequence = "".join(lines[1:])
-                else:
-                    sequence = "".join(lines)
-                molecular_weight = 18.01524  # Water
-                for X in sequence:
-                    molecular_weight += amino_acid_weight[X]
+                
+                # Read the sequence file
+                molecular_weight = self.read_sequence_file(seq_in)
+                
                 # Get the estimated number of components from MATHEWS_COEF (CCP4i)
-                with open(os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.in"),
-                          "w") as f:
-                    f.write("CELL " + " ".join(mtz_cell_unit.split(" ")[:3]) + "\nSYMM " + space_group + "\n" +
-                            "\nMOLW " + str(molecular_weight) + "\nAUTO\nEND")
-                os.system('ssh %s@%s "matthews_coef  < %s > %s"' 
-                          %(bl13_GUI_ccp4_user, bl13_GUI_ccp4_server,
-                            os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.in"),
-                            os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.out")))
-                with open(os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.out"),
-                          "r") as f:
-                    lines = f.readlines()
-                i = 0
-                while not lines[i].startswith("Nmol/asym  Matthews Coeff  %solvent") and i < 150:
-                    i += 1
-                if i == 150:
-                    raise Exception("Unexpected output from matthews_coef, you may want to check " +
-                                    os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles",
-                                                 "matthews_coef.out"))
-                i += 2
-                num_components = 0
-                max_prob = 0
-                while not lines[i].startswith("_"):
-                    numbers = lines[i].split()
-                    if float(numbers[3]) > max_prob:
-                        num_components = int(numbers[0])
-                    i += 1
-                if num_components == 0:
-                    num_components = 1
+                maxprob_number_components = get_matthews_coef_lst(self, mtz_cell_unit, space_group, molecular_weight)
+                
+                if maxprob_number_components == 0:
+                    maxprob_number_components = 1
                     self.giving_warn.emit("An error occurred trying to determine the number of components using"
                                           "matthews_coef. Using 1 as a default value")
+                
+            except Exception as args:
+                self.giving_error.emit(str(args))
+                self.giving_warn.emit("Problem in analysing sequence file or getting matthews coef")
+                self.exit(2)
+
+            try:
                 # Get the secondary structure prediction
                 result_file = os.path.join(self.work_dir, "input_fasta.horiz")
                 if job_type == 0:
@@ -150,6 +133,8 @@ class ArcimboldoProcessor(FormProcessor):
                     # # This is to run locally
                     # p = Popen(shlex.split(cmd)), cwd=self.work_dir, stdout=open(psipred_log, 'w'))
                     # # This is to run on cluster
+                    print "ssh %s@%s\ncd %s\n" % (bl13_GUI_cluster_user, bl13_GUI_cluster_server, self.work_dir) +\
+                               "srun --mem=16G " + cmd + " > " + psipred_log 
                     cmd_list = "ssh %s@%s\ncd %s\n" % (bl13_GUI_cluster_user, bl13_GUI_cluster_server, self.work_dir) +\
                                "srun --mem=16G " + cmd + " > " + psipred_log  
                                # Apparently, Psipred uses a lot of memory, so we need to specify it (srun --mem= )
@@ -240,7 +225,48 @@ class ArcimboldoProcessor(FormProcessor):
                     # END
                     self.exit(0)
 
-
+    def read_sequence_file(self, seqfilen):
+        # Copy input files
+        os.system("cp " + seqfilen + " " + os.path.join(self.work_dir, "input_fasta.seq"))
+        # Get the molecular weight from the sequence file
+        with open(os.path.join(self.work_dir, "input_fasta.seq"), "r") as f:
+            lines = [line.rstrip('\n') for line in f]
+        if lines[0].startswith(">"):
+            sequence = "".join(lines[1:])
+        else:
+            sequence = "".join(lines)
+        molecular_weight = 18.01524  # Water
+        for X in sequence:
+            molecular_weight += amino_acid_weight[X]
+        return molecular_weight
+        
+    def get_matthews_coef_lst(self, mtz_cell_unit, space_group, molecular_weight):
+        with open(os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.in"),"w") as f:
+            f.write("CELL " + " ".join(mtz_cell_unit.split(" ")[:3]) + "\nSYMM " + space_group + "\n" +
+                            "\nMOLW " + str(molecular_weight) + "\nAUTO\nEND")
+        os.system('ssh %s@%s "matthews_coef  < %s > %s"' %(bl13_GUI_ccp4_user, bl13_GUI_ccp4_server,
+                            os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.in"),
+                            os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.out")))
+        with open(os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles", "matthews_coef.out"), "r") as f:
+            lines = f.readlines()
+        i = 0
+        while not lines[i].startswith("Nmol/asym  Matthews Coeff  %solvent") and i < 150:
+            i += 1
+            if i == 150:
+                raise Exception("Unexpected output from matthews_coef, you may want to check " +
+                                  os.path.join(self.form.tmp_dir, "tmp_arcimboldo/tmp_runfiles",
+                                                 "matthews_coef.out"))
+            i += 2
+            num_components = 0
+            max_prob = 0
+            while not lines[i].startswith("_"):
+                numbers = lines[i].split()
+                if float(numbers[3]) > max_prob:
+                    num_components = int(numbers[0])
+                i += 1
+        return num_components
+                    
+                    
 class ArcimboldoJobWidget(JobWidget):
     def __init__(self, name, num, work_dir, form, parent=None):
         super(ArcimboldoJobWidget, self).__init__(name, num, work_dir, form, parent)

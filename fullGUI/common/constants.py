@@ -3,7 +3,8 @@
 bl13_GUI_dir = '/beamlines/bl13/commissioning/software/bl13_MX_GUI'
 bl13_GUI_tmpdir = '/beamlines/bl13/commissioning/software/temp'
 bl13_GUI_setup_bor = bl13_GUI_dir + '/scripts/arcimboldo_setup.bor'
-bl13_GUI_autoproc_script = bl13_GUI_dir + '/scripts/process_autoproc.sl'
+#bl13_GUI_autoproc_script = bl13_GUI_dir + '/scripts/process_autoproc.sl'
+bl13_GUI_autoproc_script = bl13_GUI_dir + '/scripts/autoproc.process.sl'
 bl13_GUI_searchdepth = 3
 ARCIMBOLDO_path = '/beamlines/bl13/commissioning/software/ARCIMBOLDO/ARCIMBOLDO_LITE'
 
