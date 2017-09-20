@@ -70,13 +70,17 @@ class MainWindow(MainWindowLayout):
             self.displayInfo('Found approved log files', prnt=True)
         # Get older processing log files
         manual_log_file = os.path.join(str(path), 'manual_processing.log')
-        if os.path.isfile(manual_log_file): # Rb 20160617 this is very, very slow
+        if os.path.isfile(manual_log_file): 
             used_log_file = manual_log_file
             log_list.append(manual_log_file)
+        # Look for newer processing log files in dataproc directories
         dataproc_dir = os.path.join(str(path), bl13_GUI_dataproc_dir)
+        # To find the highest index of hand processed data
+        hid = -1
         if os.path.isdir(dataproc_dir):
             #print 'dataproc_dir %s' % dataproc_dir
             for dir_file in sorted(os.listdir(dataproc_dir)):
+                if dir_file.isdigit() and int(dir_file)>hid: hid = int(dir_file)
                 if os.path.isdir(os.path.join(dataproc_dir, dir_file)):
                     #print 'list of files: %s\n' % os.listdir(os.path.join(dataproc_dir, dir_file))
                     #for name_file in os.listdir(os.path.join(dataproc_dir, dir_file)):
@@ -89,6 +93,7 @@ class MainWindow(MainWindowLayout):
                             if not 'manual' in logfile:
                                 newlogsfound = True # if newer logs are found, no need to look later for older logs
                             break
+        #print 'The manual processing file with highest index is ', hid
         if newlogsfound:
             self.displayInfo('Found processing files', prnt=True)
         # Get default processing file from older paths
@@ -112,7 +117,7 @@ class MainWindow(MainWindowLayout):
             self.processLogFile.setText(err_msg)
             self.textOutput.setPlainText(err_msg)
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        return used_log_file
+        return used_log_file, hid, loglist
         
     def findPhasingLogFiles(self, path=''):
         # Includes Phaser MR and Arcimboldo files
@@ -162,7 +167,9 @@ class MainWindow(MainWindowLayout):
         if not os.path.isdir(path):
             print 'findAllFiles: the given path is not a directory or doesnt exist'
             return
-        self.findProcessingLogFiles(path)
+        data_set_index = self.datasetMasterNameList[path]
+        used_log_file, hid, loglist = self.findProcessingLogFiles(path)
+        self.datasetMasterLogsList.insert(data_set_index, log_list)
         self.findPhasingLogFiles(path)
         self.displayUpdate()        
 
@@ -468,7 +475,8 @@ class MainWindow(MainWindowLayout):
         # MR: 2017 05 05
         # Cutoff parameters added
         if self.useRmerge.isChecked():
-            autoproc_parameters.append('ScaleAnaRpimallCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value()))
+            # autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"99.9:99.9 %s:%s %s:%s %s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value()))
+            autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value()))
         if self.useIoverSig.isChecked():
             autoproc_parameters.append('ScaleAnaISigmaCut_123=\\"%s:%s\\"' % (self.IoverSig_low.value(), self.IoverSig_up.value()))
         if self.useCHalf.isChecked():
@@ -699,7 +707,8 @@ class MainWindow(MainWindowLayout):
         self.info_display.moveCursor(QTextCursor.End)
         self.info_display.insertPlainText("\n")
         self.info_display.insertHtml(content)
-        self.info_display.verticalScrollBar().setValue(self.info_display.verticalScrollBar().maximum())
+        #self.info_display.verticalScrollBar().setValue(self.info_display.verticalScrollBar().maximum())
+        self.info_display.moveCursor(QTextCursor.End)
         if prnt:
             print content
 
