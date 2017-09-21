@@ -32,7 +32,9 @@ class MainWindow(MainWindowLayout):
         self.datasetMasterLogsList = []
         #        Sum list contains the lists of phaser summary files
         self.datasetMasterSumList = []
-
+        self.latestproclogfile = ''
+        self.latestanalysislogfile = ''
+        
     # UPDATE internal lists of datasets and files
     def changeDirectory(self):
         path = str(QFileDialog.getExistingDirectory(self,"Beamtime data directory",self.directory.text()).replace('/storagebls',''))
@@ -44,6 +46,7 @@ class MainWindow(MainWindowLayout):
             
     def findProcessingLogFiles(self, path=''):
         print 'findProcessingLogFiles:'
+        latestlogfile = None
         # Get information
         if path == '':
             path = str(self.datasetList.currentText())
@@ -80,7 +83,6 @@ class MainWindow(MainWindowLayout):
         if os.path.isdir(dataproc_dir):
             #print 'dataproc_dir %s' % dataproc_dir
             for dir_file in sorted(os.listdir(dataproc_dir)):
-                if dir_file.isdigit() and int(dir_file)>hid: hid = int(dir_file)
                 if os.path.isdir(os.path.join(dataproc_dir, dir_file)):
                     #print 'list of files: %s\n' % os.listdir(os.path.join(dataproc_dir, dir_file))
                     #for name_file in os.listdir(os.path.join(dataproc_dir, dir_file)):
@@ -92,13 +94,17 @@ class MainWindow(MainWindowLayout):
                             log_list.append(os.path.join(dataproc_dir, dir_file, logfile))
                             if not 'manual' in logfile:
                                 newlogsfound = True # if newer logs are found, no need to look later for older logs
+                            # Identify latest manual processing
+                            if dir_file.isdigit() and int(dir_file)>hid: 
+                                hid = int(dir_file)
+                                latestlogfile = os.path.join(dataproc_dir, dir_file, logfile)
                             break
         #print 'The manual processing file with highest index is ', hid
         if newlogsfound:
             self.displayInfo('Found processing files', prnt=True)
         # Get default processing file from older paths
         images_dir = os.path.join(str(path), 'images')
-        #print 'The image dir is ', images_dir
+        print 'The image dir is ', images_dir
         if not newlogsfound:
           print 'No new logs found, checking for old data files in ',os.path.join(dataproc_dir, images_dir)
           os.chdir(os.path.join(dataproc_dir, images_dir))
@@ -117,7 +123,7 @@ class MainWindow(MainWindowLayout):
             self.processLogFile.setText(err_msg)
             self.textOutput.setPlainText(err_msg)
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        return used_log_file, hid, loglist
+        return used_log_file, latestlogfile, log_list
         
     def findPhasingLogFiles(self, path=''):
         # Includes Phaser MR and Arcimboldo files
@@ -127,7 +133,6 @@ class MainWindow(MainWindowLayout):
         if path == '':
             self.textOutput.setPlainText('')
             return
-        data_set_index = self.datasetMasterNameList[path]
         sum_files = []
         phasing_path = os.path.join(path, bl13_GUI_phasing_dir)
         if not os.path.isdir(phasing_path):
@@ -159,8 +164,8 @@ class MainWindow(MainWindowLayout):
                                     if os.path.isfile(log_file):
                                         sum_files.append(log_file)
                                         count += 1
-        self.datasetMasterSumList.insert(data_set_index, sorted(sum_files))
-
+        return path, path, sum_files
+                                        
     def findAllFiles(self):
         print 'findAllFiles'
         path = str(self.datasetList.currentText())
@@ -168,43 +173,46 @@ class MainWindow(MainWindowLayout):
             print 'findAllFiles: the given path is not a directory or doesnt exist'
             return
         data_set_index = self.datasetMasterNameList[path]
-        used_log_file, hid, loglist = self.findProcessingLogFiles(path)
+        used_log_file, self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
+        #print self.latestproclogfile
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        self.findPhasingLogFiles(path)
+        used_log_file, self.latestanalysislogfile, loglist = self.findPhasingLogFiles(path)
+        self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
         self.displayUpdate()        
 
     def ready_log_files(self):
         print 'ready_log_files'
         QTimer.singleShot(10*1000, self.findAllFiles)
 
-    # UPDATE displayed lists and files, depending on selections
     def displayUpdate(self):
-        current_log = self.processLogFile.text()
+        # UPDATE lists and files, depending on the stage and then display
         state = self.datasetSelCB.currentIndex()
         print 'displayUpdate state %d' % state
-        if state == 0:
+        current_log = self.processLogFile.text()
+        path = str(self.datasetList.currentText())
+        data_set_index = self.datasetMasterNameList[path]
+        if state == 0: #  all files
             path = str(self.datasetList.currentText()).split()[0]
+            self.findAllFiles()
             self.displaySelectedData(path)
-        elif state == 1:
+        elif state == 1: # images to mtz stage
+            used_log_file, self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
+            self.datasetMasterLogsList.insert(data_set_index, log_list)
             self.displayProcessingFiles()
-        elif state == 2:
+        elif state == 2: # analysis stage
+            used_log_file, self.latestanalysislogfile, loglist = self.findPhasingLogFiles(path)
+            self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
             self.displaySummaryFiles()
         elif state == 3:
             pass
-        if os.path.isfile(current_log):
-            # Check for previously selected log
-            index = self.logsList.findText(current_log)
-            if index != -1:
-                self.logsList.setCurrentIndex(index)
-        if state == 1 or state == 2:
-            # Display chosen log file
-            self.selectLogFile()
-        
+        return current_log
+            
     def displaySelectedData(self, path):
         state = self.get_state(self.datasetMasterDataList[self.datasetMasterNameList[path]])
         self.datasetSelCB.setCurrentIndex(state)
         
     def displayProcessingFiles(self):
+        # Repopulate the log file pulldown when changing dataset/sample
         path = str(self.datasetList.currentText())
         if path == '' or path.startswith('<'):
             self.logsList.clear()
@@ -252,6 +260,7 @@ class MainWindow(MainWindowLayout):
         # self.logsList log files selection pull down menu
         # datasetSelCB is stage selection button (images to mtz, phasing, etc)
         # state is current index of datasetSelCB
+        print 'repopulateSelectList'
         self.textOutput.setText('')
         self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         self.logsList.clear()
@@ -360,12 +369,34 @@ class MainWindow(MainWindowLayout):
         self.displayUpdate()
         print 'repopulateSelectList: after displayUpdate'
 
+    def selectDataSet(self):
+        print 'selectDataSet', self.latestproclogfile, self.latestanalysislogfile
+        current_log = self.displayUpdate()
+        stage = self.datasetSelCB.currentIndex()
+        print 'selectDataSet', stage, self.latestproclogfile, self.latestanalysislogfile
+        if stage == 0: #  all files
+            path = str(self.datasetList.currentText()).split()[0]
+            self.findAllFiles()
+            self.displaySelectedData(path)
+        elif stage == 1: # images to mtz stage
+            index = self.logsList.findText(self.latestproclogfile)
+            print self.latestproclogfile,'found at index',index
+            self.logsList.setCurrentIndex(index)
+        elif stage == 2: # analysis stage
+            index = self.logsList.findText(self.latestanalysislogfile)
+            self.logsList.setCurrentIndex(index)
+        elif stage == 3:
+            pass
+        #self.selectLogFile()
+       
     def selectLogFile(self):
-        print 'selectLogFile'      
+        # Given aprocessing job selection (ie the entry of the logs list), the output file is retrieved and displayed
+        print 'selectLogFile', self.latestproclogfile
         stage = self.datasetSelCB.currentIndex()
         log_file = str(self.logsList.currentText())
         if stage == 1:
-            self.processLogFile.setText(log_file)
+            if self.latestproclogfile: self.processLogFile.setText(self.latestproclogfile)
+            else: self.processLogFile.setText(log_file)
             print 'Showing processing file: %s' % log_file
             self.updateProcessingInfo()
         elif stage == 2:
@@ -398,9 +429,8 @@ class MainWindow(MainWindowLayout):
                 self.textOutput.setText('File ' + log_file + ' doesn\'t exist')
 
     def updateProcessingInfo(self):
-        #print 'updateProcessingInfo'
+        print 'updateProcessingInfo'
         if self.datasetSelCB.currentIndex() == 1:
-            #print 'updateDatasetInfo'
             if self.processLogFile.text() == '':
                 print 'empty file'
             else:
@@ -610,7 +640,7 @@ class MainWindow(MainWindowLayout):
 
     # .dataInfo related methods
     def updateDatasetInfo(self, request=False):
-        #print 'updateDatasetInfo: Finding images directories in root %s' % self.directory.text()
+        print 'updateDatasetInfo: Finding images directories in root %s' % self.directory.text()
         #prevtext = self.datasetList.currentText()
         #print prevind
         shcom = 'find %s ' % self.directory.text()

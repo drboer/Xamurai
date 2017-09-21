@@ -346,7 +346,8 @@ class MainWindowLayout(QMainWindow):
         self.show()
 
                 #self.connect(self.directory, SIGNAL('textChanged(QString)'), self.updateFileTemplate)
-        self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.displayUpdate)
+        self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
+        # self.datasetSelCB is the stage selector dropdown
         self.connect(self.datasetSelCB, SIGNAL('currentIndexChanged(int)'), self.repopulateSelectList)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         self.connect(self.refreshLogPB, SIGNAL('clicked()'), self.updateProcessingInfo)
