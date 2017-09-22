@@ -59,7 +59,6 @@ class MainWindow(MainWindowLayout):
         newlogsfound = False # backward compatibility with older XALOC paths (when processing files were still in images)
         data_set_index = self.datasetMasterNameList[path]
         # Get approved and other processing files
-        latestlogfile = ''
         log_list = []
         analysis_dir = os.path.join(str(path), bl13_GUI_phasing_dir)
         if os.path.isdir(analysis_dir):
@@ -116,14 +115,14 @@ class MainWindow(MainWindowLayout):
                 self.displayInfo('Found old default processing file', prnt=True)
                 if latestlogfile == None:
                         latestlogfile = default_log
-                print default_log
+                print latestlogfile
                 break
         if len(log_list) == 0:
             err_msg = 'No default processing files found in images nor manual processing in data dir'
             self.processLogFile.setText(err_msg)
             self.textOutput.setPlainText(err_msg)
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        return latestlogfile, latestlogfile, log_list
+        return latestlogfile, log_list
         
     def findPhasingLogFiles(self, path=''):
         # Includes Phaser MR and Arcimboldo files
@@ -173,7 +172,7 @@ class MainWindow(MainWindowLayout):
             print 'findAllFiles: the given path is not a directory or doesnt exist'
             return
         data_set_index = self.datasetMasterNameList[path]
-        used_log_file, self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
+        self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
         #print self.latestproclogfile
         self.datasetMasterLogsList.insert(data_set_index, log_list)
         used_log_file, self.latestanalysislogfile, log_list = self.findPhasingLogFiles(path)
@@ -197,7 +196,7 @@ class MainWindow(MainWindowLayout):
             self.findAllFiles()
             self.displaySelectedData(path)
         elif state == 1: # images to mtz stage
-            used_log_file, self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
+            self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
             self.datasetMasterLogsList.insert(data_set_index, log_list)
             self.displayProcessingFiles()
         elif state == 2: # analysis stage
@@ -368,11 +367,11 @@ class MainWindow(MainWindowLayout):
             self.datasetList.insertItem(0, '<Select a stage containing at least one data set>')
         self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         print 'repopulateSelectList: before displayUpdate'
-        self.displayUpdate()
+        self.selectDataSet()
         print 'repopulateSelectList: after displayUpdate'
 
     def selectDataSet(self):
-        print 'selectDataSet', self.latestproclogfile, self.latestanalysislogfile
+        print 'selectDataSet'
         current_log = self.displayUpdate()
         stage = self.datasetSelCB.currentIndex()
         print 'selectDataSet', stage, self.latestproclogfile, self.latestanalysislogfile
@@ -381,15 +380,11 @@ class MainWindow(MainWindowLayout):
             self.findAllFiles()
             self.displaySelectedData(path)
         elif stage == 1: # images to mtz stage
-            index = self.logsList.findText(self.latestproclogfile)
-            print self.latestproclogfile,'found at index',index
-            self.logsList.setCurrentIndex(index)
+            self.findSelectLogFile(self.latestproclogfile)
         elif stage == 2: # analysis stage
-            index = self.logsList.findText(self.latestanalysislogfile)
-            self.logsList.setCurrentIndex(index)
+            self.findSelectLogFile(self.latestanalysislogfile)
         elif stage == 3:
             pass
-        #self.selectLogFile()
        
     def selectLogFile(self):
         # Given aprocessing job selection (ie the entry of the logs list), the output file is retrieved and displayed
@@ -429,12 +424,19 @@ class MainWindow(MainWindowLayout):
             else:
                 self.textOutput.setText('File ' + log_file + ' doesn\'t exist')
 
+    def findSelectLogFile(self,logfilenamepath):
+        index = self.logsList.findText(logfilenamepath)
+        #print self.latestproclogfile,'found at index',index
+        self.logsList.setCurrentIndex(index)
+        return
+                
     def updateProcessingInfo(self):
         # This function finds the processing file and extracts parameters from it
         print 'updateProcessingInfo'
         if self.datasetSelCB.currentIndex() == 1: # stage 1
             if self.processLogFile.text() == '':
                 print 'empty file'
+                self.textOutput.setPlainText('')
             else:
                 selected_file = str(self.processLogFile.text())
                 if os.path.isfile(selected_file):
@@ -509,11 +511,11 @@ class MainWindow(MainWindowLayout):
         # Cutoff parameters added
         if self.useRmerge.isChecked():
             # autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"99.9:99.9 %s:%s %s:%s %s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value()))
-            autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value()))
+            autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_low.value()))
         if self.useIoverSig.isChecked():
-            autoproc_parameters.append('ScaleAnaISigmaCut_123=\\"%s:%s\\"' % (self.IoverSig_low.value(), self.IoverSig_up.value()))
+            autoproc_parameters.append('ScaleAnaISigmaCut_123=\\"%s:%s\\"' % (self.IoverSig_low.value(), self.IoverSig_low.value()))
         if self.useCHalf.isChecked():
-            autoproc_parameters.append('ScaleAnaCChalfCut_123=\\"%s:%s\\"' % (self.CHalf_low.value(), self.CHalf_up.value()))
+            autoproc_parameters.append('ScaleAnaCChalfCut_123=\\"%s:%s\\"' % (self.CHalf_low.value(), self.CHalf_low.value()))
 
         # 2. Calculate the number of this job/launch
         name = str(self.datasetList.currentText()).split("/")[-2]
@@ -667,7 +669,7 @@ class MainWindow(MainWindowLayout):
                     #print thisdata
                     self.datasetMasterNameList[cbname] = nimdir
                     self.datasetMasterDataList.append(thisdata)
-                    latestlogile, self.latestlogfile, log_list = self.findProcessingLogFiles(cbname)
+                    self.latestlogfile, log_list = self.findProcessingLogFiles(cbname)
                     self.datasetMasterLogsList.insert(nimdir, log_list)
                     latestlogile, self.latestlogfile, log_list = self.findPhasingLogFiles(cbname)
                     self.datasetMasterSumList.insert(nimdir, sorted(log_list))

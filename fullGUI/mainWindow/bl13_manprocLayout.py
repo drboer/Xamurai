@@ -275,13 +275,13 @@ class MainWindowLayout(QMainWindow):
         self.cutsGB.setLayout(QGridLayout())
         self.cutsGB.layout().addWidget(self.useRmerge,0,0,1,2)
         self.cutsGB.layout().addWidget(self.Rmerge_low,1,0)
-        self.cutsGB.layout().addWidget(self.Rmerge_up,1,1)
+        #self.cutsGB.layout().addWidget(self.Rmerge_up,1,1)
         self.cutsGB.layout().addWidget(self.useCHalf,0,2,1,2)
         self.cutsGB.layout().addWidget(self.CHalf_low,1,2)
-        self.cutsGB.layout().addWidget(self.CHalf_up,1,3)
+        #self.cutsGB.layout().addWidget(self.CHalf_up,1,3)
         self.cutsGB.layout().addWidget(self.useIoverSig,0,4,1,2)
         self.cutsGB.layout().addWidget(self.IoverSig_low,1,4)
-        self.cutsGB.layout().addWidget(self.IoverSig_up,1,5)
+        #self.cutsGB.layout().addWidget(self.IoverSig_up,1,5)
         
         inner_row = 0
         autoproc_layout.addWidget(self.cellGB,inner_row,0,1,10)       
