@@ -32,8 +32,8 @@ class MainWindow(MainWindowLayout):
         self.datasetMasterLogsList = []
         #        Sum list contains the lists of phaser summary files
         self.datasetMasterSumList = []
-        self.latestproclogfile = ''
-        self.latestanalysislogfile = ''
+        self.latestproclogfile = -1
+        self.latestanalysislogfile = -1
         
     # UPDATE internal lists of datasets and files
     def changeDirectory(self):
@@ -59,7 +59,7 @@ class MainWindow(MainWindowLayout):
         newlogsfound = False # backward compatibility with older XALOC paths (when processing files were still in images)
         data_set_index = self.datasetMasterNameList[path]
         # Get approved and other processing files
-        used_log_file = ''
+        latestlogfile = ''
         log_list = []
         analysis_dir = os.path.join(str(path), bl13_GUI_phasing_dir)
         if os.path.isdir(analysis_dir):
@@ -67,14 +67,14 @@ class MainWindow(MainWindowLayout):
                 if name_file == "currently_approved_processing.log":
                     log_file = os.path.join(analysis_dir, name_file)
                     log_list.append(log_file)
-                    used_log_file = log_file
+                    latestlogfile = log_file
                     break
         if len(log_list) > 0:
             self.displayInfo('Found approved log files', prnt=True)
         # Get older processing log files
         manual_log_file = os.path.join(str(path), 'manual_processing.log')
         if os.path.isfile(manual_log_file): 
-            used_log_file = manual_log_file
+            latestlogfile = manual_log_file
             log_list.append(manual_log_file)
         # Look for newer processing log files in dataproc directories
         dataproc_dir = os.path.join(str(path), bl13_GUI_dataproc_dir)
@@ -106,7 +106,7 @@ class MainWindow(MainWindowLayout):
         images_dir = os.path.join(str(path), 'images')
         print 'The image dir is ', images_dir
         if not newlogsfound:
-          print 'No new logs found, checking for old data files in ',os.path.join(dataproc_dir, images_dir)
+          print 'No new default processing logs found, checking for old default processing data files in ',os.path.join(dataproc_dir, images_dir)
           os.chdir(os.path.join(dataproc_dir, images_dir))
           for name_file in glob.glob('*_defaultprocessing.log'):
           #for name_file in os.listdir(os.path.join(images_dir)): # this is very, very slow
@@ -114,8 +114,8 @@ class MainWindow(MainWindowLayout):
                 default_log = os.path.join(images_dir, name_file)
                 log_list.append(default_log)
                 self.displayInfo('Found old default processing file', prnt=True)
-                if used_log_file == '':
-                        used_log_file = default_log
+                if latestlogfile == None:
+                        latestlogfile = default_log
                 print default_log
                 break
         if len(log_list) == 0:
@@ -123,7 +123,7 @@ class MainWindow(MainWindowLayout):
             self.processLogFile.setText(err_msg)
             self.textOutput.setPlainText(err_msg)
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        return used_log_file, latestlogfile, log_list
+        return latestlogfile, latestlogfile, log_list
         
     def findPhasingLogFiles(self, path=''):
         # Includes Phaser MR and Arcimboldo files
@@ -176,7 +176,7 @@ class MainWindow(MainWindowLayout):
         used_log_file, self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
         #print self.latestproclogfile
         self.datasetMasterLogsList.insert(data_set_index, log_list)
-        used_log_file, self.latestanalysislogfile, loglist = self.findPhasingLogFiles(path)
+        used_log_file, self.latestanalysislogfile, log_list = self.findPhasingLogFiles(path)
         self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
         self.displayUpdate()        
 
@@ -190,9 +190,10 @@ class MainWindow(MainWindowLayout):
         print 'displayUpdate state %d' % state
         current_log = self.processLogFile.text()
         path = str(self.datasetList.currentText())
-        data_set_index = self.datasetMasterNameList[path]
+        try: data_set_index = self.datasetMasterNameList[path]
+        except: return None
         if state == 0: #  all files
-            path = str(self.datasetList.currentText()).split()[0]
+            path = str(self.datasetList.currentText()).split(' ')[0]
             self.findAllFiles()
             self.displaySelectedData(path)
         elif state == 1: # images to mtz stage
@@ -200,7 +201,7 @@ class MainWindow(MainWindowLayout):
             self.datasetMasterLogsList.insert(data_set_index, log_list)
             self.displayProcessingFiles()
         elif state == 2: # analysis stage
-            used_log_file, self.latestanalysislogfile, loglist = self.findPhasingLogFiles(path)
+            used_log_file, self.latestanalysislogfile, log_list = self.findPhasingLogFiles(path)
             self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
             self.displaySummaryFiles()
         elif state == 3:
@@ -212,6 +213,7 @@ class MainWindow(MainWindowLayout):
         self.datasetSelCB.setCurrentIndex(state)
         
     def displayProcessingFiles(self):
+        print 'displayProcessingFiles'
         # Repopulate the log file pulldown when changing dataset/sample
         path = str(self.datasetList.currentText())
         if path == '' or path.startswith('<'):
@@ -312,7 +314,7 @@ class MainWindow(MainWindowLayout):
         self.change_stack()
         
         if state == 0:  # If the user has selected the ALL tab
-            self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.displayUpdate)
+            self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
             self.datasetList.clear()
             self.datasetList.insertItem(0, '<Select dataset path>')
             count = 1
@@ -322,7 +324,7 @@ class MainWindow(MainWindowLayout):
                 self.datasetList.insertItem(count, key + ' ' + text)
                 self.datasetList.setItemData(count, color, Qt.TextColorRole)
                 count += 1
-            self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.displayUpdate)
+            self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
             return
         
         print 'repopulateSelectList: after state settings'
@@ -334,7 +336,7 @@ class MainWindow(MainWindowLayout):
             prevtext = var[0]
         if prevtext == '' or '<Select dataset path>':
             selind = 0
-        self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.displayUpdate)
+        self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         self.datasetList.clear()
         # print 'repopulateSelectList: Adding datasets that are; ', str(self.datasetSelCB.currentText()).lower()
         # print 'From ', self.datasetMasterNameList
@@ -364,7 +366,7 @@ class MainWindow(MainWindowLayout):
             self.textOutput.setPlainText('No default processing files found in images nor manual processing in data dir')
         if len(self.datasetList) == 0:
             self.datasetList.insertItem(0, '<Select a stage containing at least one data set>')
-        self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.displayUpdate)
+        self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         print 'repopulateSelectList: before displayUpdate'
         self.displayUpdate()
         print 'repopulateSelectList: after displayUpdate'
@@ -391,12 +393,11 @@ class MainWindow(MainWindowLayout):
        
     def selectLogFile(self):
         # Given aprocessing job selection (ie the entry of the logs list), the output file is retrieved and displayed
-        print 'selectLogFile', self.latestproclogfile
+        print 'selectLogFile', self.latestproclogfile, str(self.logsList.currentText())
         stage = self.datasetSelCB.currentIndex()
         log_file = str(self.logsList.currentText())
         if stage == 1:
-            if self.latestproclogfile: self.processLogFile.setText(self.latestproclogfile)
-            else: self.processLogFile.setText(log_file)
+            self.processLogFile.setText(log_file)
             print 'Showing processing file: %s' % log_file
             self.updateProcessingInfo()
         elif stage == 2:
@@ -429,8 +430,9 @@ class MainWindow(MainWindowLayout):
                 self.textOutput.setText('File ' + log_file + ' doesn\'t exist')
 
     def updateProcessingInfo(self):
+        # This function finds the processing file and extracts parameters from it
         print 'updateProcessingInfo'
-        if self.datasetSelCB.currentIndex() == 1:
+        if self.datasetSelCB.currentIndex() == 1: # stage 1
             if self.processLogFile.text() == '':
                 print 'empty file'
             else:
@@ -480,7 +482,8 @@ class MainWindow(MainWindowLayout):
                             self.SG.setText( line.split(srchstr)[1] )
                 else:
                     self.displayError('Can\'t read, not a file: %s' % selected_file, prnt=True)
-        elif self.datasetSelCB.currentIndex() == 2:
+        elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis
+            #pass
             self.selectLogFile()
 
     # MAIN (autoproc)
@@ -664,8 +667,10 @@ class MainWindow(MainWindowLayout):
                     #print thisdata
                     self.datasetMasterNameList[cbname] = nimdir
                     self.datasetMasterDataList.append(thisdata)
-                    self.findProcessingLogFiles(cbname)
-                    self.findPhasingLogFiles(cbname)
+                    latestlogile, self.latestlogfile, log_list = self.findProcessingLogFiles(cbname)
+                    self.datasetMasterLogsList.insert(nimdir, log_list)
+                    latestlogile, self.latestlogfile, log_list = self.findPhasingLogFiles(cbname)
+                    self.datasetMasterSumList.insert(nimdir, sorted(log_list))
                     if need_to_write:
                         self.writeDataInfoFile(cbname,thisdata)
                     nimdir = nimdir + 1
