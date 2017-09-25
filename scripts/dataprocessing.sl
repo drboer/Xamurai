@@ -1,9 +1,11 @@
 #!/bin/bash 
 
 ### Usage and parameters #######################################################
-# 1: BASE DATA FOLDER (aka SOURCEDATA) contains the /images folder)
-# 2: RESULTS FOLDER (aka PROCDIR)
-# 3 - ..: process parameters (as a shell formatted string)
+# 1: program to run (currently xia2 or autoproc)
+# 2: BASE DATA FOLDER (aka SOURCEDATA) contains the /images folder)
+# 3: RESULTS FOLDER (aka PROCDIR)
+# 4: File recovery list
+# 5 - ..: process parameters (as a shell formatted string)
 ################################################################################
 
 ### SLURM environment ##########################################################
@@ -33,10 +35,11 @@ source  /mnt/hpcsoftware/share/GPhL/autoPROC/setup.sh
 INSTALL_DIR=${POST_PROCESSING_SCRIPTS_ROOT}
 source ${INSTALL_DIR}/etc/SLURM.rc
 # We assume ALL directories passed as arguments ALREADY exist.
-SOURCEDATA=$1
-PROCDIR=$2
+SOURCEDATA=$2
+PROCDIR=$3
 WORKDIR="/tmp/autoproc_$SLURM_JOBID"
-FILELIST="${INSTALL_DIR}/autoproc/autoproc.files2recover"
+#FILELIST="${INSTALL_DIR}/autoproc/autoproc.files2recover"
+FILELIST=$4
 ################################################################################
 
 ### MAIN script ################################################################
@@ -107,7 +110,13 @@ then
     # Email: vonrhein@globalphasing.com
     # Telephone: 9-011-497616966491
     #
-    srun process -I "$WORKDIR"/images "${@:3}"
+    if [ "$1" == 'process' ]
+    then
+       srun process -I "$WORKDIR"/images "${@:5}"
+    elif [ "$1" == 'xia2' ]
+    then
+       srun xia2 "$WORKDIR" "${@:5}"
+    fi
     ################################################################################
 
     ### Recovering results #########################################################

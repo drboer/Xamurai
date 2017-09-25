@@ -18,7 +18,7 @@ class MainWindowLayout(QMainWindow):
                 
         ### To get updated data from the robot about crystal info, centering etc, a thread is started
         self.eventTimer = QTimer()
-        self.connect(self.eventTimer, SIGNAL('timeout()'), self.updateDatasetInfo)
+        self.connect(self.eventTimer, SIGNAL('timeout()'), self.scanRootDirectory)
         self.eventTimer.start(10000)
         self.setFixedWidth(1120)
         self.resize(1120,800)
@@ -70,8 +70,15 @@ class MainWindowLayout(QMainWindow):
         self.lower_PBs.layout().addWidget(self.infoPB)
         self.lower_PBs.layout().setMargin(0)
         self.closePB = QPushButton('Close')
-        self.runPB = QPushButton('Run autoproc')
-      
+        self.procprogSelCB = QComboBox()
+        self.procprogSelCB.addItems(['autoproc (GP)','xia2'])
+        self.runPB = QPushButton('Run')
+        self.runGB = QGroupBox('Run buttons')
+        self.runGB.setLayout(QGridLayout())
+        self.runGB.layout().addWidget(self.procprogSelCB,0,0)
+        self.runGB.layout().addWidget(self.runPB,0,1)
+
+        
         self.textOutput = QTextBrowser()
         self.textOutput.setOpenExternalLinks(True)
         #self.textOutput.setStyleSheet("font: 9pt "Courier";")
@@ -301,8 +308,7 @@ class MainWindowLayout(QMainWindow):
         inner_row += 1
         autoproc_layout.addWidget(self.cutsGB,inner_row,0,1,7)
         autoproc_layout.addWidget(self.useMinimalSpotSearch,inner_row,7)
-        autoproc_layout.addWidget(self.runPB,inner_row,8,1,2)
-        
+        autoproc_layout.addWidget(self.runGB,inner_row,8,1,2)
         
         autoproc_widget = QWidget()
         autoproc_widget.setLayout(autoproc_layout)
@@ -348,11 +354,11 @@ class MainWindowLayout(QMainWindow):
                 #self.connect(self.directory, SIGNAL('textChanged(QString)'), self.updateFileTemplate)
         self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         # self.datasetSelCB is the stage selector dropdown
-        self.connect(self.datasetSelCB, SIGNAL('currentIndexChanged(int)'), self.repopulateSelectList)
+        self.connect(self.datasetSelCB, SIGNAL('currentIndexChanged(int)'), self.SelectStage)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         self.connect(self.refreshLogPB, SIGNAL('clicked()'), self.updateProcessingInfo)
-        self.connect(self.refreshDirPB, SIGNAL('clicked()'), self.updateDatasetInfo)
-        self.connect(self.refresh_logs, SIGNAL('clicked()'), self.findAllFiles)
+        self.connect(self.refreshDirPB, SIGNAL('clicked()'), self.scanRootDirectory)
+        self.connect(self.refresh_logs, SIGNAL('clicked()'), self.refreshLogFiles)
         self.connect(self.backPB, SIGNAL('clicked()'), self.setStatusBack)
         self.connect(self.approvePB, SIGNAL('clicked()'), self.setStatusForward)
         self.connect(self.datadirPB, SIGNAL('clicked()'), self.changeDirectory)
@@ -364,6 +370,7 @@ class MainWindowLayout(QMainWindow):
         self.connect(self.jobsPB, SIGNAL("clicked()"), self.jobs.show)
         self.connect(self.hidePB, SIGNAL("clicked()"), self.hide_job_widget)
         self.connect(self.useSG, SIGNAL("toggled(bool)"), self.toggleSG)
+        self.connect(self.procprogSelCB, SIGNAL('currentIndexChanged(int)'), self.procprogChanged)
         self.connect(self.runPB, SIGNAL("clicked()"), self.runManProc)
         #self.connect(self.SG, SIGNAL('textChanged(QString)'), self.changeSG)
         self.connect(self.SG, SIGNAL('editingFinished()'), self.changeSG)

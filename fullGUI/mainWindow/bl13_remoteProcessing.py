@@ -7,7 +7,7 @@ Created on Wed May 10 12:12:02 2017
 import subprocess, time, os, shlex
 
 
-def runRemoteAutoproc(remoteuser, remoteserver, script2run, sourcedatadir, autoproc_args, default='FALSE'):
+def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourcedatadir, filelist2recover, processing_args, default='FALSE'):
        msg=''
        sourcedatadir = sourcedatadir.rstrip('images')
        print 'runRemoteAutoproc: sourcedatadir ',sourcedatadir
@@ -42,15 +42,15 @@ def runRemoteAutoproc(remoteuser, remoteserver, script2run, sourcedatadir, autop
        #CLUSTER COMMAND
        #print 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s' % (processlogfile, processlogfile, sampledatadir, script2run, sourcedatadir, procdir)
        
-       proccommand = 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s' % (processlogfile, processlogfile, sampledatadir,
-                                                                                                  script2run, sourcedatadir, procdir)
+       proccommand = 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s %s %s' % (processlogfile, processlogfile, sampledatadir,
+                                                                                                  script2run, program2run, sourcedatadir, procdir, filelist2recover)
 
        # Here we add the autoproc parameters:
        # This IF-ELSE clause allows to use both a list ['arg','arg','arg'] or a string 'arg arg arg'
-       if isinstance(autoproc_args, basestring):  # This checks both for str and unicode
-           proccommand += ' ' + autoproc_args
+       if isinstance(processing_args, basestring):  # This checks both for str and unicode
+           proccommand += ' ' + processing_args
        else:
-           for argument in autoproc_args: 
+           for argument in processing_args: 
                proccommand += ' ' + argument       
        proccommand += ' >& ' + processlogfile
               

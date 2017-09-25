@@ -2,13 +2,14 @@ import subprocess, shlex, os, glob
 from PyQt4.QtCore import QTimer, SIGNAL, Qt
 from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
 from .bl13_manprocLayout import MainWindowLayout, AutoProcJobWidget
-from .bl13_remoteAutoproc import runRemoteAutoproc
+from .bl13_remoteProcessing import runRemoteProcessing
 from ..common.layout_utils import colorize
 from ..common.functions import now
 from ..common.constants import bl13_GUI_phasing_dir, bl13_GUI_dataproc_dir, bl13_GUI_dir, \
                                bl13_GUI_ccp4_user, bl13_GUI_ccp4_server, \
                                bl13_GUI_cluster_user, bl13_GUI_cluster_server, \
-                               bl13_GUI_autoproc_script, bl13_GUI_searchdepth
+                               bl13_GUI_processing_script, bl13_GUI_searchdepth, \
+                               bl13_GUI_autoproc_files2recover, bl13_GUI_xia2_files2recover
 import names
 
 # # command to find image directories and time stamp
@@ -32,8 +33,8 @@ class MainWindow(MainWindowLayout):
         self.datasetMasterLogsList = []
         #        Sum list contains the lists of phaser summary files
         self.datasetMasterSumList = []
-        self.latestproclogfile = -1
-        self.latestanalysislogfile = -1
+        self.latestproclogfile = ''
+        self.latestanalysislogfile = ''
         
     # UPDATE internal lists of datasets and files
     def changeDirectory(self):
@@ -42,9 +43,10 @@ class MainWindow(MainWindowLayout):
             self.displayInfo('Changing root directory: ' + path, prnt=True)
             self.directory.setText( str(path) )
             # Now update data dir list
-            self.updateDatasetInfo(True)
+            self.scanRootDirectory(True)
             
     def findProcessingLogFiles(self, path=''):
+        """ Searches for processing log files in a sample root path """
         print 'findProcessingLogFiles:'
         latestlogfile = None
         # Get information
@@ -89,8 +91,9 @@ class MainWindow(MainWindowLayout):
                     os.chdir(os.path.join(dataproc_dir, dir_file))
                     for logfile in glob.glob('*processing.log'):
                             #log_list.append(os.path.join(dataproc_dir, dir_file, name_file))
-                            print 'Found log file %s' % logfile
-                            log_list.append(os.path.join(dataproc_dir, dir_file, logfile))
+                            fulllogname = os.path.join(dataproc_dir, dir_file, logfile)
+                            print 'Found log file %s' % fulllogname
+                            log_list.append(fulllogname)
                             if not 'manual' in logfile:
                                 newlogsfound = True # if newer logs are found, no need to look later for older logs
                             # Identify latest manual processing
@@ -124,7 +127,7 @@ class MainWindow(MainWindowLayout):
         self.datasetMasterLogsList.insert(data_set_index, log_list)
         return latestlogfile, log_list
         
-    def findPhasingLogFiles(self, path=''):
+    def findAnalysisLogFiles(self, path=''):
         # Includes Phaser MR and Arcimboldo files
         ## Get information ##
         if path == '':
@@ -132,6 +135,7 @@ class MainWindow(MainWindowLayout):
         if path == '':
             self.textOutput.setPlainText('')
             return
+        data_set_index = self.datasetMasterNameList[ path.split(' ')[0] ]
         sum_files = []
         phasing_path = os.path.join(path, bl13_GUI_phasing_dir)
         if not os.path.isdir(phasing_path):
@@ -163,77 +167,78 @@ class MainWindow(MainWindowLayout):
                                     if os.path.isfile(log_file):
                                         sum_files.append(log_file)
                                         count += 1
-        return path, path, sum_files
+        self.datasetMasterSumList.insert(data_set_index, sum_files)
+        return path, sum_files
                                         
-    def findAllFiles(self):
-        print 'findAllFiles'
-        path = str(self.datasetList.currentText())
+    def findAllLogFiles(self):
+        print 'findAllLogFiles'
+        path = str(self.datasetList.currentText()).split(' ')[0]
         if not os.path.isdir(path):
-            print 'findAllFiles: the given path is not a directory or doesnt exist'
+            print 'findAllLogFiles: the given path is not a directory or doesnt exist'
+            print '  path: %s' %path
             return
+
         data_set_index = self.datasetMasterNameList[path]
-        self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
+        print self.datasetMasterNameList
+        print path, data_set_index
+        latestproclogfile, log_list = self.findProcessingLogFiles(path)
         #print self.latestproclogfile
-        self.datasetMasterLogsList.insert(data_set_index, log_list)
-        used_log_file, self.latestanalysislogfile, log_list = self.findPhasingLogFiles(path)
-        self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
-        self.displayUpdate()        
+        latestanalysislogfile, log_list = self.findAnalysisLogFiles(path)
+        return latestproclogfile, latestanalysislogfile
 
-    def ready_log_files(self):
-        print 'ready_log_files'
-        QTimer.singleShot(10*1000, self.findAllFiles)
+    def setTimerForLogFile(self):
+        print 'setTimerForLogFile'
+        QTimer.singleShot(10*1000, self.selectDataSet)
 
-    def displayUpdate(self):
-        # UPDATE lists and files, depending on the stage and then display
-        state = self.datasetSelCB.currentIndex()
-        print 'displayUpdate state %d' % state
-        current_log = self.processLogFile.text()
-        path = str(self.datasetList.currentText())
-        try: data_set_index = self.datasetMasterNameList[path]
-        except: return None
-        if state == 0: #  all files
-            path = str(self.datasetList.currentText()).split(' ')[0]
-            self.findAllFiles()
-            self.displaySelectedData(path)
-        elif state == 1: # images to mtz stage
-            self.latestproclogfile, log_list = self.findProcessingLogFiles(path)
-            self.datasetMasterLogsList.insert(data_set_index, log_list)
-            self.displayProcessingFiles()
-        elif state == 2: # analysis stage
-            used_log_file, self.latestanalysislogfile, log_list = self.findPhasingLogFiles(path)
-            self.datasetMasterSumList.insert(data_set_index, sorted(log_list))
-            self.displaySummaryFiles()
-        elif state == 3:
-            pass
-        return current_log
-            
-    def displaySelectedData(self, path):
+    def setStageFromData(self, path):
         state = self.get_state(self.datasetMasterDataList[self.datasetMasterNameList[path]])
         self.datasetSelCB.setCurrentIndex(state)
         
-    def displayProcessingFiles(self):
-        print 'displayProcessingFiles'
+    def repopulateLogFilePullDown(self):
+        print 'repopulateLogFilePullDown'
+        stage = self.datasetSelCB.currentIndex()
+        if stage == 0: #  all files
+            path = str(self.datasetList.currentText()).split()[0]
+            self.latestproclogfile, self.latestanalysislogfile = self.findAllLogFiles()
+            latestlogfile = self.latestanalysislogfile
+            if not os.path.isfile(self.latestanalysislogfile): latestlogfile = self.latestproclogfile
+            self.repopulateProcessLogFilePullDown()
+            self.repopulateAnalysisFilePullDown(False)
+        elif stage == 1: # images to mtz stage
+            latestlogfile, log_list = self.findProcessingLogFiles()
+            self.repopulateProcessLogFilePullDown()
+        elif stage == 2: # analysis stage
+            latestlogfile, log_list = self.findAnalysisLogFiles()
+            self.repopulateAnalysisFilePullDown()
+        elif stage == 3:
+            pass
+        return latestlogfile
+        
+    def repopulateProcessLogFilePullDown(self, clear = True):
+        print 'repopulateProcessLogFilePullDown'
         # Repopulate the log file pulldown when changing dataset/sample
-        path = str(self.datasetList.currentText())
+        path = str(self.datasetList.currentText()).split(' ')[0]
         if path == '' or path.startswith('<'):
+            self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
             self.logsList.clear()
+            self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
             return
         self.imgName.setText(path.split("/")[-2])
         self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
-        self.logsList.clear()
+        if clear: self.logsList.clear()
         for log in self.datasetMasterLogsList[self.datasetMasterNameList[path]]:
             self.logsList.addItem(log)
-        self.logsList.setCurrentIndex(0)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         
-    def displaySummaryFiles(self):
+    def repopulateAnalysisFilePullDown(self, clear = True):
+        print 'repopulateAnalysisFilePullDown'
         path = str(self.datasetList.currentText())
         if path == '' or path.startswith('<'):
             self.logsList.clear()
             return
         self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
-        self.logsList.clear()
-        index = self.datasetMasterNameList[path]
+        if clear: self.logsList.clear()
+        index = self.datasetMasterNameList[ path.split(' ')[0] ]
         # Approved processing log file
         log_file = os.path.join(path, bl13_GUI_phasing_dir, "currently_approved_processing.log")
         self.logsList.addItem(log_file + ' (Approved processing log file)')
@@ -244,6 +249,7 @@ class MainWindow(MainWindowLayout):
                 self.logsList.addItem(item)
             self.logsList.setCurrentIndex(self.logsList.count()-1)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
+        
         # Prepare molecular replacement parameters
         mtz_file = os.path.join(path, bl13_GUI_phasing_dir, "currently_approved_truncate-unique.mtz")
         self.auto_molrep.mtz_file_display.setText(mtz_file)
@@ -256,18 +262,11 @@ class MainWindow(MainWindowLayout):
         self.arcimboldo.work_dir = os.path.join(dirname, bl13_GUI_phasing_dir)
         self.arcimboldo.root_edit.setText(str(dirname.split("/")[-2]))
 
-    def repopulateSelectList(self): 
+    def SelectStage(self):
         ## Update buttons and layout ##
-        # self.logsList log files selection pull down menu
-        # datasetSelCB is stage selection button (images to mtz, phasing, etc)
-        # state is current index of datasetSelCB
-        print 'repopulateSelectList'
-        self.textOutput.setText('')
-        self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
-        self.logsList.clear()
-        self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
-        state = self.datasetSelCB.currentIndex()
-        if state == 0:
+        print 'SelectStage'
+        stage = self.datasetSelCB.currentIndex()
+        if stage == 0:
             self.backPB.setText('-')
             self.backPB.setEnabled(False)
             self.approvePB.setText('-') # hide instead of adding bad text
@@ -278,7 +277,7 @@ class MainWindow(MainWindowLayout):
             self.textOutput.setHtml(self.wel_txt)
             self.disconnect(self.logsListPB, SIGNAL('clicked()'), self.coot_selection)
             self.logsListPB.hide()
-        elif state == 1:
+        elif stage == 1:
             self.backPB.setText('-')
             self.backPB.setEnabled(False)
             self.approvePB.setText('Accept ' + names.stage1)
@@ -288,7 +287,7 @@ class MainWindow(MainWindowLayout):
             self.refresh_logs.setEnabled(True)
             self.disconnect(self.logsListPB, SIGNAL('clicked()'), self.coot_selection)
             self.logsListPB.hide()
-        elif state == 2:
+        elif stage == 2:
             self.backPB.setText('Back to ' + names.stage1)
             self.backPB.setEnabled(True)
             self.approvePB.setText('Accept ' + names.stage2)
@@ -299,7 +298,7 @@ class MainWindow(MainWindowLayout):
             self.logsListPB.setText('Coot results')    
             self.connect(self.logsListPB, SIGNAL('clicked()'), self.coot_selection)
             self.logsListPB.show()
-        elif state == 3:
+        elif stage == 3:
             self.backPB.setText('Back to ' + names.stage1)
             self.backPB.setEnabled(True)
             self.approvePB.setText('-')
@@ -311,22 +310,39 @@ class MainWindow(MainWindowLayout):
             self.logsListPB.hide()
         # Change widget to display depending on selection
         self.change_stack()
+
+        datasetindex = self.datasetList.currentIndex()
+        self.repopulateDataSetList()
+        self.datasetList.setCurrentIndex(0)
+        if datasetindex == self.datasetList.currentIndex(): self.selectDataSet()
         
-        if state == 0:  # If the user has selected the ALL tab
+    def repopulateDataSetList(self): 
+        # self.logsList log files selection pull down menu
+        # datasetSelCB is stage selection button (images to mtz, phasing, etc)
+        # stage is current index of datasetSelCB
+        print 'repopulateDataSetList'
+        self.textOutput.setText('')
+        self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
+        self.logsList.clear()
+        self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
+        
+        stage = self.datasetSelCB.currentIndex()
+        
+        if stage == 0:  # If the user has selected the ALL tab
             self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
             self.datasetList.clear()
             self.datasetList.insertItem(0, '<Select dataset path>')
             count = 1
             for key in self.datasetMasterNameList:
-                data_state = self.get_state(self.datasetMasterDataList[self.datasetMasterNameList[key]])
-                (text, color) = self.state_string(data_state)
+                data_stage = self.get_state(self.datasetMasterDataList[self.datasetMasterNameList[key]])
+                (text, color) = self.state_string(data_stage)
                 self.datasetList.insertItem(count, key + ' ' + text)
                 self.datasetList.setItemData(count, color, Qt.TextColorRole)
                 count += 1
             self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
             return
         
-        print 'repopulateSelectList: after state settings'
+        print 'repopulateDataSetList: after stage settings'
         selind = -1
         # print 'nr of dirs %d' % len(self.datasetMasterNameList)
         prevtext = self.datasetList.currentText()
@@ -337,10 +353,10 @@ class MainWindow(MainWindowLayout):
             selind = 0
         self.disconnect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         self.datasetList.clear()
-        # print 'repopulateSelectList: Adding datasets that are; ', str(self.datasetSelCB.currentText()).lower()
+        # print 'repopulateDataSetList: Adding datasets that are; ', str(self.datasetSelCB.currentText()).lower()
         # print 'From ', self.datasetMasterNameList
         # print 'Current selection: ', prevtext
-        for key in self.datasetMasterNameList:
+        for key in self.datasetMasterNameList: 
             # print masteritem
             # cbname = masteritem['name']
             addit = False
@@ -348,7 +364,7 @@ class MainWindow(MainWindowLayout):
             # print index, key, self.datasetMasterDataList[index]
             # print 'seleting ', self.datasetSelCB.currentText()
             data_state = self.get_state(self.datasetMasterDataList[index])
-            if data_state == state or state == 0:
+            if data_state == stage or stage == 0:
                 addit = True
             if addit: 
                 # print 'Adding ', key
@@ -366,32 +382,20 @@ class MainWindow(MainWindowLayout):
         if len(self.datasetList) == 0:
             self.datasetList.insertItem(0, '<Select a stage containing at least one data set>')
         self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
-        print 'repopulateSelectList: before displayUpdate'
-        self.selectDataSet()
-        print 'repopulateSelectList: after displayUpdate'
 
     def selectDataSet(self):
         print 'selectDataSet'
-        current_log = self.displayUpdate()
-        stage = self.datasetSelCB.currentIndex()
-        print 'selectDataSet', stage, self.latestproclogfile, self.latestanalysislogfile
-        if stage == 0: #  all files
-            path = str(self.datasetList.currentText()).split()[0]
-            self.findAllFiles()
-            self.displaySelectedData(path)
-        elif stage == 1: # images to mtz stage
-            self.findSelectLogFile(self.latestproclogfile)
-        elif stage == 2: # analysis stage
-            self.findSelectLogFile(self.latestanalysislogfile)
-        elif stage == 3:
-            pass
-       
+        
+        latestlogfile = self.repopulateLogFilePullDown()
+        print latestlogfile
+        self.findSelectLogFile(latestlogfile)
+            
     def selectLogFile(self):
         # Given aprocessing job selection (ie the entry of the logs list), the output file is retrieved and displayed
         print 'selectLogFile', self.latestproclogfile, str(self.logsList.currentText())
         stage = self.datasetSelCB.currentIndex()
         log_file = str(self.logsList.currentText())
-        if stage == 1:
+        if stage == 0 or stage == 1:
             self.processLogFile.setText(log_file)
             print 'Showing processing file: %s' % log_file
             self.updateProcessingInfo()
@@ -425,15 +429,32 @@ class MainWindow(MainWindowLayout):
                 self.textOutput.setText('File ' + log_file + ' doesn\'t exist')
 
     def findSelectLogFile(self,logfilenamepath):
-        index = self.logsList.findText(logfilenamepath)
-        #print self.latestproclogfile,'found at index',index
-        self.logsList.setCurrentIndex(index)
-        return
-                
+        print 'findSelectLogFile', self.logsList.currentIndex()
+        currentindex = self.logsList.currentIndex()
+        logindex = self.logsList.findText(logfilenamepath)
+        print self.latestproclogfile,'found at index',logindex
+        self.logsList.setCurrentIndex(logindex)
+        if currentindex == logindex: self.selectLogFile() # force loading the log file if index didnt change
+
+    def refreshLogFiles(self):
+        """ Updates the log file list, but doesnt change the log file index """
+        current_log = self.logsList.currentText()
+        latestlogfile = self.repopulateLogFilePullDown()
+        logindex = self.logsList.findText(current_log.split(' ')[0])
+        self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
+        self.logsList.setCurrentIndex(logindex)
+        self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
+        
     def updateProcessingInfo(self):
         # This function finds the processing file and extracts parameters from it
         print 'updateProcessingInfo'
-        if self.datasetSelCB.currentIndex() == 1: # stage 1
+        if self.datasetSelCB.currentIndex() == 0: # stage 0
+            selected_file = str(self.processLogFile.text())
+            if os.path.isfile(selected_file):
+                text=open(selected_file).read()
+                if '.html' in selected_file: self.textOutput.setHtml(html)
+                else: self.textOutput.setPlainText(text)
+        elif self.datasetSelCB.currentIndex() == 1: # stage 1
             if self.processLogFile.text() == '':
                 print 'empty file'
                 self.textOutput.setPlainText('')
@@ -441,12 +462,10 @@ class MainWindow(MainWindowLayout):
                 selected_file = str(self.processLogFile.text())
                 if os.path.isfile(selected_file):
                     text=open(selected_file).read()
-                    # MR: 2017 05 04
                     # If there is an .html, it should be displayed instead
                     html_summary = "/".join(selected_file.split("/")[:-1] + ["summary.html"])
-                    #html_summary = "summary.html"
-                    print 'HTML file at %s' % html_summary
                     if os.path.isfile(html_summary):
+                        print 'HTML file at %s' % html_summary
                         curdir = os.getcwd()
                         os.chdir( "/"+str("/".join(selected_file.split("/")[1:-1])) )
                         with open(html_summary,'r') as summary:
@@ -457,6 +476,7 @@ class MainWindow(MainWindowLayout):
                         #self.textOutput.verticalScrollBar().setValue(380)
                     # If there is not, display the log and continue as usual
                     else:
+                        print 'Log file at %s' % selected_file
                         self.textOutput.setPlainText(text)
                     self.scroll_to_end()
                     textlines = text.splitlines()
@@ -484,14 +504,67 @@ class MainWindow(MainWindowLayout):
                             self.SG.setText( line.split(srchstr)[1] )
                 else:
                     self.displayError('Can\'t read, not a file: %s' % selected_file, prnt=True)
-        elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis
-            #pass
-            self.selectLogFile()
+        elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis, not handled here
+            pass
 
     # MAIN (autoproc)
     def runManProc(self):
         print 'runManProc'
         self.setEnabled(False)
+
+        # Find source data dir
+        data_dir_root = str(self.datasetList.currentText()).replace('/storagebls','')
+        data_dir = os.path.join(data_dir_root,'images') # runRemoteAutoproc expects images in the file, so add it
+        if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
+            proc_parameters = self.getAutoprocParameters(data_dir)
+            program2run = 'process'
+            filelist2recover = bl13_GUI_autoproc_files2recover
+        elif str(self.procprogSelCB.currentText()).split(' ')[0] == 'xia2':
+            proc_parameters = self.getXIA2Parameters(data_dir)
+            program2run = 'xia2'
+            filelist2recover = bl13_GUI_xia2_files2recover
+        # TODO: Change the parameters when inverse beam collection is detected
+
+        print "Datadir name", data_dir
+        print "proc_parameters", proc_parameters
+
+        # Calculate the number of this job/launch
+        name = str(self.datasetList.currentText()).split("/")[-2]
+        print "Dataset list name", str(self.datasetList.currentText())
+        print "Name of this dataset",name
+        work_dir = os.path.join(str(self.datasetList.currentText()), 'dataproc').replace('/storagebls','')
+        num = 0
+        if os.path.isdir(work_dir):
+            existing_num = []
+            for number in os.listdir(work_dir):
+                if os.path.isdir(os.path.join(work_dir, number)) and number.isdigit():
+                    existing_num.append(int(number))
+            if len(existing_num):
+                num = max(existing_num) + 1
+        else:
+            os.system("mkdir " + work_dir)
+
+        # Display job information on screen
+        job = AutoProcJobWidget(name, num, os.path.join(work_dir, str(num)))
+        self.jobs_display.layout().addWidget(job)
+
+        ret, all_ok = runRemoteProcessing(bl13_GUI_cluster_user, bl13_GUI_cluster_server,
+                                bl13_GUI_processing_script, program2run, data_dir, filelist2recover, proc_parameters)
+        print ret     
+        
+        # Update GUI and job
+        if all_ok:
+            job.set_status("Sent")
+        else:
+            job.set_status("Error")
+        # self.processLogFile.setText(logfile)
+        # RB 20161115
+        self.setTimerForLogFile()
+        self.setEnabled(True)
+        return
+        
+    def getAutoprocParameters(self, data_dir):
+        print 'getAutoprocParameters'
         # 1. Set parameters
         autoproc_parameters = ['StopIfSubdirExists=no', 'BeamCentreFrom=header:x,y',
                                'autoPROC_TwoThetaAxis=\\"-1 0 0\\"']
@@ -517,26 +590,7 @@ class MainWindow(MainWindowLayout):
         if self.useCHalf.isChecked():
             autoproc_parameters.append('ScaleAnaCChalfCut_123=\\"%s:%s\\"' % (self.CHalf_low.value(), self.CHalf_low.value()))
 
-        # 2. Calculate the number of this job/launch
-        name = str(self.datasetList.currentText()).split("/")[-2]
-        print "Dataset list name", str(self.datasetList.currentText())
-        print "Name of this dataset",name
-        work_dir = os.path.join(str(self.datasetList.currentText()), 'dataproc').replace('/storagebls','')
-        num = 0
-        if os.path.isdir(work_dir):
-            existing_num = []
-            for number in os.listdir(work_dir):
-                if os.path.isdir(os.path.join(work_dir, number)) and number.isdigit():
-                    existing_num.append(int(number))
-            if len(existing_num):
-                num = max(existing_num) + 1
-        else:
-            os.system("mkdir " + work_dir)
         
-        # 3. Find data dir
-        data_dir = str(self.datasetList.currentText()).replace('/storagebls','')
-        data_dir = os.path.join(data_dir,'images') # runRemoteAutoproc expects images in the file, so add it
-        print "Datadir name", data_dir
         # MR: 2017 05 05
         # Added image specification
         if self.useImageSpec.isChecked():
@@ -544,28 +598,62 @@ class MainWindow(MainWindowLayout):
                                                                                       self.first_image.value(), self.last_image.value()))
         else:
             autoproc_parameters.append('-I \\"' + data_dir + '\\"')
-        # TODO: Change the autoproc parameters when inverse beam collection is detected
 
-        # 4. Display job information on screen
-        job = AutoProcJobWidget(name, num, os.path.join(work_dir, str(num)))
-        self.jobs_display.layout().addWidget(job)
-
-        # 5. Run Autoproc
-        ret, all_ok = runRemoteAutoproc(bl13_GUI_cluster_user, bl13_GUI_cluster_server,
-                                bl13_GUI_autoproc_script, data_dir, autoproc_parameters)
-        print ret     
+        return autoproc_parameters
         
-        # 6. Update GUI and job
-        if all_ok:
-            job.set_status("Sent")
+
+    def getXIA2Parameters(self, data_dir):
+        print 'getXIA2Parameters'
+
+        xia2_parameters = ['pipeline=3d']
+        # image specification
+        if self.useImageSpec.isChecked():
+            xia2_parameters.append('image=%s_####.cbf:%d:%d' % ( os.path.join(data_dir, self.imgName.text()), self.first_image.value(), self.last_image.value() ) )
         else:
-            job.set_status("Error")
-        # self.processLogFile.setText(logfile)
-        # RB 20161115
-        self.ready_log_files()
-        #self.findAllFiles()
-        self.setEnabled(True)
+            xia2_parameters.append(data_dir)
+
+        if self.useCellPB.isChecked():
+            xia2_parameters.append('unit_cell=%s, %s, %s, %s, %s, %s' % (self.cella.value(), self.cellb.value(),
+                                                                        self.cellc.value(), self.cellalpha.value(),
+                                                                        self.cellbeta.value(), self.cellgamma.value()))
+        if self.useSG.isChecked():
+            xia2_parameters.append('space_group=%s' % self.SG.text())
+        #if self.useMinimalSpotSearch.isChecked():
+        #    xia2_parameters.append('XdsSpotSearchMinNumSpotsPerImage=\\"0\\"')
+        if self.useResolLimits.isChecked():
+            xia2_parameters.append('d_max=%.2f' % self.resLimitLow.value())
+            xia2_parameters.append('d_min=%.2f' % self.resLimitHigh.value())
+        else:
+            xia2_parameters.append('d_min=None')
+            xia2_parameters.append('d_max=None')
+
+        # Cutoff parameters: the XALOC default is to only cut off based on cchalf, unless otherwise specified. Unmerged I/sigma is not used
+        xia2_parameters.append('isigma=0.0001')
+        cchalfstr = '' 
+        #if self.useRmerge.isChecked():
+        #    xia2_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_low.value()))
+        if self.useIoverSig.isChecked():
+            xia2_parameters.append('misigma=%s' % self.IoverSig_low.value() )
+            cchalfstr = 'cc_half=0.0001'
+        else:
+            xia2_parameters.append('misigma=0.0001')
+        if self.useCHalf.isChecked():
+            cchalfstr ='cc_half=%s' % self.CHalf_low.value()
+
+        if (cchalfstr): xia2_parameters.append(cchalfstr)
+            
+        return xia2_parameters
         
+    def procprogChanged(self):
+        if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
+            self.useMinimalSpotSearch.setEnabled(True)
+            self.useRmerge.setEnabled(True)
+            self.Rmerge_low.setEnabled(True)
+        elif str(self.procprogSelCB.currentText()).split(' ')[0] == 'xia2':
+            self.useMinimalSpotSearch.setEnabled(False)
+            self.useRmerge.setEnabled(False)
+            self.Rmerge_low.setEnabled(False)
+
     # ACCEPT/BACK
     def setStatusBack(self):
         print 'setStatusBack'
@@ -644,15 +732,16 @@ class MainWindow(MainWindowLayout):
         return
 
     # .dataInfo related methods
-    def updateDatasetInfo(self, request=False):
-        print 'updateDatasetInfo: Finding images directories in root %s' % self.directory.text()
-        #prevtext = self.datasetList.currentText()
-        #print prevind
-        shcom = 'find %s ' % self.directory.text()
-        #shcom = shcom + '-maxdepth 3 -type d -name "images" -printf \'%p %c\\n\'' 
-        shcom = shcom + '-maxdepth %d -type d -name "images"' % bl13_GUI_searchdepth# RB 20161118: make it faster
-        #print 'shell command  is %s' % shcom
+    def scanRootDirectory(self, request=False):
+        """ repopulates the dataset pulldown """
+        print 'scanRootDirectory: Finding images directories in root %s' % self.directory.text()
         if os.path.isdir(self.directory.text()): 
+            #prevtext = self.datasetList.currentText()
+            #print prevind
+            shcom = 'find %s ' % self.directory.text()
+            #shcom = shcom + '-maxdepth 3 -type d -name "images" -printf \'%p %c\\n\'' 
+            shcom = shcom + '-maxdepth %d -type d -name "images"' % bl13_GUI_searchdepth# RB 20161118: make it faster
+            #print 'shell command  is %s' % shcom
             imageslist = subprocess.Popen(shcom, shell=True, stdout=subprocess.PIPE).stdout.read().splitlines()
             #print imageslist
             if len(imageslist) != len(self.datasetMasterNameList) or request:
@@ -671,17 +760,15 @@ class MainWindow(MainWindowLayout):
                     self.datasetMasterDataList.append(thisdata)
                     self.latestlogfile, log_list = self.findProcessingLogFiles(cbname)
                     self.datasetMasterLogsList.insert(nimdir, log_list)
-                    latestlogile, self.latestlogfile, log_list = self.findPhasingLogFiles(cbname)
+                    self.latestlogfile, log_list = self.findAnalysisLogFiles(cbname)
                     self.datasetMasterSumList.insert(nimdir, sorted(log_list))
                     if need_to_write:
                         self.writeDataInfoFile(cbname,thisdata)
                     nimdir = nimdir + 1
                 # Now reset the selection list
-                self.repopulateSelectList()
+                self.repopulateDataSetList()
         else: 
             print 'Not a valid directory, ignored'
-            
-        #print 'exit updateDatasetInfo'
     
     def readDataInfoFile(self, indir):
         infofile = os.path.join(indir,'.dataInfo')

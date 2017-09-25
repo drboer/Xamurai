@@ -92,7 +92,7 @@ def manproc_main(argv):
     if latestdir:
         print 'The user dir is: %s' % latestdir
         win.directory.setText(latestdir)
-        win.updateDatasetInfo(True)
+        win.scanRootDirectory(True)
 
     # Position on screen
     win.move(80, 80)
