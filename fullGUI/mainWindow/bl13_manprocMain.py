@@ -138,6 +138,8 @@ class MainWindow(MainWindowLayout):
         data_set_index = self.datasetMasterNameList[ path.split(' ')[0] ]
         sum_files = []
         phasing_path = os.path.join(path, bl13_GUI_phasing_dir)
+        latestlogfile = ''
+        idir=-1
         if not os.path.isdir(phasing_path):
             self.displayInfo('No log files exist yet (%s directory not found)' % bl13_GUI_phasing_dir, prnt=True)
         else:
@@ -151,6 +153,9 @@ class MainWindow(MainWindowLayout):
                             log_file = os.path.join(phasing_path, dir_name, dir_num, "autoMRphaser.log")
                             if os.path.isfile(log_file):
                                 sum_files.append(log_file)
+                                if dir_num > idir: 
+                                    idir = dir_num
+                                    latestlogfile = log_file
             # Arcimboldo
             self.displayInfo('Looking for arcimboldo log files in %s' % phasing_path, prnt=True)
             ## Get all summary files ##
@@ -167,8 +172,11 @@ class MainWindow(MainWindowLayout):
                                     if os.path.isfile(log_file):
                                         sum_files.append(log_file)
                                         count += 1
+                                        if dir_num > idir: 
+                                            idir = dir_num
+                                            latestlogfile = log_file
         self.datasetMasterSumList.insert(data_set_index, sum_files)
-        return path, sum_files
+        return latestlogfile, sum_files
                                         
     def findAllLogFiles(self):
         print 'findAllLogFiles'
