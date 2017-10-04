@@ -2,7 +2,7 @@ import subprocess, shlex, os, glob
 from PyQt4.QtCore import QTimer, SIGNAL, Qt
 from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
 from .bl13_manprocLayout import MainWindowLayout, AutoProcJobWidget
-from .bl13_remoteProcessing import runRemoteProcessing
+from .bl13_remoteProcessing import runRemoteProcessing, getManualProcessingOutputLogFilename
 from ..common.layout_utils import colorize
 from ..common.functions import now
 from ..common.constants import bl13_GUI_phasing_dir, bl13_GUI_dataproc_dir, bl13_GUI_dir, \
@@ -95,12 +95,15 @@ class MainWindow(MainWindowLayout):
                             print 'Found log file %s' % fulllogname
                             log_list.append(fulllogname)
                             if not 'manual' in logfile:
-                                newlogsfound = True # if newer logs are found, no need to look later for older logs
-                            # Identify latest manual processing
-                            if dir_file.isdigit() and int(dir_file)>hid: 
-                                hid = int(dir_file)
+                                newlogsfound = True # if newer type default logs are found, no need to look later for older logs
                                 latestlogfile = os.path.join(dataproc_dir, dir_file, logfile)
-                            break
+                            else:
+                                # Identify latest manual processing
+                                manrunnumber = dir_file.split('_')[-1]
+                                if manrunnumber.isdigit() and int(manrunnumber)>hid: 
+                                    hid = int(manrunnumber)
+                                    latestlogfile = os.path.join(dataproc_dir, dir_file, logfile)
+                                #break
         #print 'The manual processing file with highest index is ', hid
         if newlogsfound:
             self.displayInfo('Found processing files', prnt=True)
@@ -231,7 +234,9 @@ class MainWindow(MainWindowLayout):
             self.logsList.clear()
             self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
             return
+        self.useImageSpec.setCheckable(False)
         self.imgName.setText(path.split("/")[-2])
+        self.useImageSpec.setCheckable(True)
         self.disconnect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         if clear: self.logsList.clear()
         for log in self.datasetMasterLogsList[self.datasetMasterNameList[path]]:
@@ -411,9 +416,9 @@ class MainWindow(MainWindowLayout):
             if self.logsList.currentIndex() == 0 and os.path.isfile(log_file.split()[0]):
                 log_file = os.readlink(log_file.split()[0])
                 print 'Showing processing file: %s' % log_file
-                # MR: 2017 05 04
                 # If there is an .html, it should be displayed instead
                 html_summary = "/".join(log_file.split("/")[:-1] + ["summary.html"])
+                print 'Looking for summary.html: %s' % html_summary
                 if os.path.isfile(html_summary):
                     with open(html_summary,'r') as summary:
                         html = summary.read()
@@ -495,12 +500,14 @@ class MainWindow(MainWindowLayout):
                             cellpars = line.split(srchstr)[1].split()
                             #print 'cellpars %s' %str(cellpars)
                             if len(cellpars) == 6:
+                                self.useCell.setCheckable(False)
                                 self.cella.setValue(float(cellpars[0]))
                                 self.cellb.setValue(float(cellpars[1]))
                                 self.cellc.setValue(float(cellpars[2]))
                                 self.cellalpha.setValue(float(cellpars[3]))
                                 self.cellbeta.setValue(float(cellpars[4]))
                                 self.cellgamma.setValue(float(cellpars[5]))
+                                self.useCell.setCheckable(True)
                         srchstr = 'Resolution ...........................................'
                         if srchstr in line:
                             resol = line.split(srchstr)[1].split()
@@ -509,7 +516,9 @@ class MainWindow(MainWindowLayout):
                                 self.resLimitHigh.setValue(float(resol[2]))
                         srchstr = 'Spacegroup name ......................................'
                         if srchstr in line:
+                            self.useSG.setCheckable(False)
                             self.SG.setText( line.split(srchstr)[1] )
+                            self.useSG.setCheckable(False)
                 else:
                     self.displayError('Can\'t read, not a file: %s' % selected_file, prnt=True)
         elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis, not handled here
@@ -523,6 +532,7 @@ class MainWindow(MainWindowLayout):
         # Find source data dir
         data_dir_root = str(self.datasetList.currentText()).replace('/storagebls','')
         data_dir = os.path.join(data_dir_root,'images') # runRemoteAutoproc expects images in the file, so add it
+        sampleroot = os.path.basename( os.path.normpath( str(self.datasetList.currentText()) ) )
         if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
             proc_parameters = self.getAutoprocParameters(data_dir)
             program2run = 'process'
@@ -540,31 +550,26 @@ class MainWindow(MainWindowLayout):
         name = str(self.datasetList.currentText()).split("/")[-2]
         print "Dataset list name", str(self.datasetList.currentText())
         print "Name of this dataset",name
-        work_dir = os.path.join(str(self.datasetList.currentText()), 'dataproc').replace('/storagebls','')
-        num = 0
-        if os.path.isdir(work_dir):
-            existing_num = []
-            for number in os.listdir(work_dir):
-                if os.path.isdir(os.path.join(work_dir, number)) and number.isdigit():
-                    existing_num.append(int(number))
-            if len(existing_num):
-                num = max(existing_num) + 1
-        else:
-            os.system("mkdir " + work_dir)
-
+        print 'Sample root : ', sampleroot
+        
+        genprocdir, num, jobprocdir, joblogfile = getManualProcessingOutputLogFilename(data_dir_root, sampleroot)
+        print genprocdir, num, jobprocdir, joblogfile
+        os.mkdir(jobprocdir)
+        
         # Display job information on screen
-        job = AutoProcJobWidget(name, num, os.path.join(work_dir, str(num)))
-        self.jobs_display.layout().addWidget(job)
+        jobWidget = AutoProcJobWidget(sampleroot, num, jobprocdir)
+        self.jobs_display.layout().addWidget(jobWidget)
 
         ret, all_ok = runRemoteProcessing(bl13_GUI_cluster_user, bl13_GUI_cluster_server,
-                                bl13_GUI_processing_script, program2run, data_dir, filelist2recover, proc_parameters)
-        print ret     
+                                bl13_GUI_processing_script, program2run, data_dir, filelist2recover, proc_parameters, jobprocdir, joblogfile)
+        #print ret
+        all_ok = True
         
         # Update GUI and job
         if all_ok:
-            job.set_status("Sent")
+            jobWidget.set_status("Sent")
         else:
-            job.set_status("Error")
+            jobWidget.set_status("Error")
         # self.processLogFile.setText(logfile)
         # RB 20161115
         self.setTimerForLogFile()
@@ -576,7 +581,7 @@ class MainWindow(MainWindowLayout):
         # 1. Set parameters
         autoproc_parameters = ['StopIfSubdirExists=no', 'BeamCentreFrom=header:x,y',
                                'autoPROC_TwoThetaAxis=\\"-1 0 0\\"']
-        if self.useCellPB.isChecked():
+        if self.useCell.isChecked():
             autoproc_parameters.append('cell=\\"%s %s %s %s %s %s\\"' % (self.cella.value(), self.cellb.value(),
                                                                         self.cellc.value(), self.cellalpha.value(),
                                                                         self.cellbeta.value(), self.cellgamma.value()))
@@ -592,11 +597,11 @@ class MainWindow(MainWindowLayout):
         # Cutoff parameters added
         if self.useRmerge.isChecked():
             # autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"99.9:99.9 %s:%s %s:%s %s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value(),self.Rmerge_low.value(), self.Rmerge_up.value()))
-            autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_low.value()))
+            autoproc_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_cut.value(), self.Rmerge_cut.value()))
         if self.useIoverSig.isChecked():
-            autoproc_parameters.append('ScaleAnaISigmaCut_123=\\"%s:%s\\"' % (self.IoverSig_low.value(), self.IoverSig_low.value()))
-        if self.useCHalf.isChecked():
-            autoproc_parameters.append('ScaleAnaCChalfCut_123=\\"%s:%s\\"' % (self.CHalf_low.value(), self.CHalf_low.value()))
+            autoproc_parameters.append('ScaleAnaISigmaCut_123=\\"%s:%s\\"' % (self.IoverSig_cut.value(), self.IoverSig_cut.value()))
+        if self.useCcHalf.isChecked():
+            autoproc_parameters.append('ScaleAnaCChalfCut_123=\\"%s:%s\\"' % (self.CcHalf_cut.value(), self.CcHalf_cut.value()))
 
         
         # MR: 2017 05 05
@@ -620,7 +625,7 @@ class MainWindow(MainWindowLayout):
         else:
             xia2_parameters.append(data_dir)
 
-        if self.useCellPB.isChecked():
+        if self.useCell.isChecked():
             xia2_parameters.append('unit_cell=%s, %s, %s, %s, %s, %s' % (self.cella.value(), self.cellb.value(),
                                                                         self.cellc.value(), self.cellalpha.value(),
                                                                         self.cellbeta.value(), self.cellgamma.value()))
@@ -645,7 +650,7 @@ class MainWindow(MainWindowLayout):
             cchalfstr = 'cc_half=0.0001'
         else:
             xia2_parameters.append('misigma=0.0001')
-        if self.useCHalf.isChecked():
+        if self.useCcHalf.isChecked():
             cchalfstr ='cc_half=%s' % self.CHalf_low.value()
 
         if (cchalfstr): xia2_parameters.append(cchalfstr)
@@ -815,6 +820,7 @@ class MainWindow(MainWindowLayout):
     def toggleSG(self):
         if not self.useSG.isChecked():
             self.SG.setText('')
+            self.useSG.setChecked(False)
 
     def changeSG(self):
         self.useSG.setChecked(True)
@@ -823,8 +829,20 @@ class MainWindow(MainWindowLayout):
         self.useResolLimits.setChecked(True)
 
     def cellChange(self):
-        self.useCellPB.setChecked(True)
+        self.useCell.setChecked(True)
 
+    def useRmergeCheck(self):
+        self.useRmerge.setChecked(True)
+        
+    def useCcHalfCheck(self):
+        self.useCcHalf.setChecked(True)
+        
+    def useIoverSigCheck(self):
+        self.useIoverSig.setChecked(True)
+
+    def useImageSpecCheck(self):
+        self.useImageSpec.setChecked(True)
+    
     # INFO
     def displayError(self, arg, prnt=False):
         content = colorize("Error: " + str(arg), "Red")

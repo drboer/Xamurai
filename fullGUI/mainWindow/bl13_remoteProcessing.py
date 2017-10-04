@@ -5,12 +5,12 @@ Created on Wed May 10 12:12:02 2017
 @author: mroda
 """
 import subprocess, time, os, shlex
+from ..common.constants import bl13_GUI_dataproc_dir, bl13_GUI_manual_processdir_ext, bl13_GUI_manual_outlog_extension
 
-
-def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourcedatadir, filelist2recover, processing_args, default='FALSE'):
+def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourcedatadir, filelist2recover, processing_args, procdir, outputlog):
        msg=''
        sourcedatadir = sourcedatadir.rstrip('images')
-       print 'runRemoteAutoproc: sourcedatadir ',sourcedatadir
+       print 'runRemoteProcessing: sourcedatadir ',sourcedatadir
        sampledatadir = os.path.basename(os.path.normpath(sourcedatadir))
        msg += ("Source data in %s\n" % sourcedatadir)
        ### TODO: check if these directories exist before executing autoprocess
@@ -22,27 +22,7 @@ def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourc
               print msg_DirNotFound
               return msg
        
-       dataproc = '%s/dataproc' % sourcedatadir
-       if not os.path.isdir(dataproc):
-           os.mkdir(dataproc)
-       if default == 'FALSE':
-           ap_num=subprocess.check_output("find %s -maxdepth 1 -type d -regex '%s/[0-9][0-9]*' | sed 's^%s/^^' | sort -g | tail -1 " % (dataproc,dataproc,dataproc), shell='True')
-           try:
-               ap_num = int(ap_num) + 1
-           except ValueError:
-               ap_num = 0
-           procdir =  os.path.join(sourcedatadir,'dataproc',str(ap_num))
-           processlogfile= os.path.join(procdir, 'XALOC_manual_processing.log')
-           os.mkdir(procdir)
-       else:
-           procdir =  os.path.join(sourcedatadir,'dataproc','%s_default_processing' % default)
-           processlogfile=os.path.join(procdir, '%s_default_processing.log' % default)
-           os.mkdir(procdir)
-
-       #CLUSTER COMMAND
-       #print 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s' % (processlogfile, processlogfile, sampledatadir, script2run, sourcedatadir, procdir)
-       
-       proccommand = 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s %s %s' % (processlogfile, processlogfile, sampledatadir,
+       proccommand = 'sbatch --output=%s --error=%s --job-name=%s --open-mode=append %s %s %s %s %s' % (outputlog, outputlog, sampledatadir,
                                                                                                   script2run, program2run, sourcedatadir, procdir, filelist2recover)
 
        # Here we add the autoproc parameters:
@@ -52,7 +32,7 @@ def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourc
        else:
            for argument in processing_args: 
                proccommand += ' ' + argument       
-       proccommand += ' >& ' + processlogfile
+       proccommand += ' >& ' + outputlog
               
        sshcmd = 'ssh %s@%s \"' % (remoteuser,remoteserver) + str(proccommand) + '\"'
        msg += ('sshcmd: %s\n' % sshcmd)
@@ -77,3 +57,39 @@ def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourc
        #print msg
        #pssh.terminate()
        return msg, all_ok
+       
+       
+def getProcessingOutputDirectory(samplerootdir): # samplerootdir is where the image test and dataproc directories are
+    # This function returns the directory with highest incremented number in the list of dirs in the samplerootdir
+    dataprocdir = os.path.join(samplerootdir,bl13_GUI_dataproc_dir)
+    returnnum = -1 # the data processing directory does not exist
+    if os.path.isdir(dataprocdir):
+        #print 'Find numbered subdir command',("find %s -maxdepth 1 -type d -regex '%s/[0-9][0-9]*' | sed 's^%s/^^' | sort -g | tail -1 " % (dataprocdir,dataprocdir,dataprocdir))
+        ap_num_list=subprocess.check_output("find %s -maxdepth 1 -type d -name '*[0-9]' | sed 's^%s/^^'" % (dataprocdir,dataprocdir), shell='True').split('\n')[:-1]
+        try:
+            for ap_num in ap_num_list:
+                try:
+                    newnum = ap_num.split('_')[-1]
+                    #print newnum
+                    if newnum > returnnum: returnnum = newnum
+                except: 
+                    print 'getProcessingOutputDirectory: problem with string ', ap_num
+            returnnum = int(returnnum) + 1 # Numbered subdirectories exist, next number is ap_num
+        except ValueError:
+            returnnum = 0 # the data processing directory already exists, but no numbered subdirectories
+
+    return dataprocdir, returnnum
+    
+def getManualProcessingOutputLogFilename(samplerootdir, imagesweeptemplate): # samplerootdir is where the image test and dataproc directories are
+    generaldataprocdir, ap_num = getProcessingOutputDirectory(samplerootdir)
+    if ap_num == -1 or ap_num == 0:
+        joblogdir = '%s_%s_0' % (imagesweeptemplate, bl13_GUI_manual_processdir_ext)
+        joblogfile = '%s_%s' % (imagesweeptemplate, bl13_GUI_manual_outlog_extension)
+    elif ap_num > 0:
+        joblogdir = '%s_%s_%d' % (imagesweeptemplate, bl13_GUI_manual_processdir_ext, ap_num)
+        joblogfile = '%s_%s' % (imagesweeptemplate, bl13_GUI_manual_outlog_extension)
+
+    processlogdir = os.path.join(generaldataprocdir, joblogdir)
+    processlogfile = os.path.join(processlogdir, joblogfile)
+
+    return generaldataprocdir, ap_num, processlogdir, processlogfile

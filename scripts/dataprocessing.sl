@@ -123,7 +123,7 @@ then
     # We assume that PROCDIR already exist.
     # mkdir -p $PROCDIR
 
-    gather_files_from_filelist $WORKDIR/proc $PROCDIR $FILELIST
+    gather_files_bundle_from_filelist $WORKDIR/proc $PROCDIR $FILELIST
 
     # Files excluded from list
     # 1) Symbolic links

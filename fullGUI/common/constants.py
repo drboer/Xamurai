@@ -12,6 +12,8 @@ ARCIMBOLDO_path = '/beamlines/bl13/commissioning/software/ARCIMBOLDO/ARCIMBOLDO_
 # DIR NAMES
 bl13_GUI_phasing_dir = 'analysis'
 bl13_GUI_dataproc_dir = 'dataproc'
+bl13_GUI_manual_processdir_ext = 'manual_processing'
+bl13_GUI_manual_outlog_extension = 'manual_processing.log'
 bl13_GUI_phaser_jobs_dir_ending = 'phaserMR'
 bl13_GUI_arcimboldo_jobs_dir_ending = 'arcimboldo'
 
