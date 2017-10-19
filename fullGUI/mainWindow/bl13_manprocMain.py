@@ -517,8 +517,8 @@ class MainWindow(MainWindowLayout):
                         srchstr = 'Spacegroup name ......................................'
                         if srchstr in line:
                             self.useSG.setCheckable(False)
-                            self.SG.setText( line.split(srchstr)[1] )
-                            self.useSG.setCheckable(False)
+                            self.SG.setText( line.split(srchstr)[1].lstrip().rstrip() )
+                            self.useSG.setCheckable(True)
                 else:
                     self.displayError('Can\'t read, not a file: %s' % selected_file, prnt=True)
         elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis, not handled here
@@ -586,7 +586,7 @@ class MainWindow(MainWindowLayout):
                                                                         self.cellc.value(), self.cellalpha.value(),
                                                                         self.cellbeta.value(), self.cellgamma.value()))
         if self.useSG.isChecked():
-            autoproc_parameters.append('symm=\\"%s\\"' % self.SG.text())
+            autoproc_parameters.append('symm=\\"%s\\"' % self.SG.text().lstrip().rstrip())
         if self.useMinimalSpotSearch.isChecked():
             autoproc_parameters.append('XdsSpotSearchMinNumSpotsPerImage=\\"0\\"')
         if self.useResolLimits.isChecked():
@@ -630,7 +630,7 @@ class MainWindow(MainWindowLayout):
                                                                         self.cellc.value(), self.cellalpha.value(),
                                                                         self.cellbeta.value(), self.cellgamma.value()))
         if self.useSG.isChecked():
-            xia2_parameters.append('space_group=%s' % self.SG.text())
+            xia2_parameters.append('space_group=\\\'%s\\\'' % str(self.SG.text()).lstrip().rstrip() )
         #if self.useMinimalSpotSearch.isChecked():
         #    xia2_parameters.append('XdsSpotSearchMinNumSpotsPerImage=\\"0\\"')
         if self.useResolLimits.isChecked():
@@ -646,12 +646,12 @@ class MainWindow(MainWindowLayout):
         #if self.useRmerge.isChecked():
         #    xia2_parameters.append('ScaleAnaRmergeCut_123=\\"%s:%s\\"' % (self.Rmerge_low.value(), self.Rmerge_low.value()))
         if self.useIoverSig.isChecked():
-            xia2_parameters.append('misigma=%s' % self.IoverSig_low.value() )
+            xia2_parameters.append('misigma=%s' % self.IoverSig_cut.value() )
             cchalfstr = 'cc_half=0.0001'
         else:
             xia2_parameters.append('misigma=0.0001')
         if self.useCcHalf.isChecked():
-            cchalfstr ='cc_half=%s' % self.CHalf_low.value()
+            cchalfstr ='cc_half=%.3f' % self.CcHalf_cut.value()
 
         if (cchalfstr): xia2_parameters.append(cchalfstr)
             
@@ -661,11 +661,11 @@ class MainWindow(MainWindowLayout):
         if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
             self.useMinimalSpotSearch.setEnabled(True)
             self.useRmerge.setEnabled(True)
-            self.Rmerge_low.setEnabled(True)
+            self.Rmerge_cut.setEnabled(True)
         elif str(self.procprogSelCB.currentText()).split(' ')[0] == 'xia2':
             self.useMinimalSpotSearch.setEnabled(False)
             self.useRmerge.setEnabled(False)
-            self.Rmerge_low.setEnabled(False)
+            self.Rmerge_cut.setEnabled(False)
 
     # ACCEPT/BACK
     def setStatusBack(self):
@@ -719,6 +719,12 @@ class MainWindow(MainWindowLayout):
                 mtz_file = os.path.join(data_proc_dir, "truncate-unique.mtz")
             elif log_file_name.startswith("manual_processing"):  # Older
                 mtz_file = os.path.join(current_dir, "data", "truncate-unique.mtz")
+            elif "manual_processing" in log_file:  # Added 20171019
+                logcontent = open(log_file, 'r').read()
+                if 'xia2' in logcontent: 
+                    mtz_file = os.path.join(data_proc_dir, "DataFiles", "AUTOMATIC_DEFAULT_free.mtz")
+                elif 'autoPROC' in logcontent:
+                    mtz_file = os.path.join(data_proc_dir, "truncate-unique.mtz")
             elif log_file_name.startswith("autoproc_"):
                 num = log_file.split("/")[-2]
                 mtz_file = os.path.join(current_dir, bl13_GUI_dataproc_dir, num, "truncate-unique.mtz")
@@ -823,6 +829,7 @@ class MainWindow(MainWindowLayout):
             self.useSG.setChecked(False)
 
     def changeSG(self):
+        #print 'changeSG'
         self.useSG.setChecked(True)
 
     def resolChange(self):

@@ -69,15 +69,16 @@ def getProcessingOutputDirectory(samplerootdir): # samplerootdir is where the im
         try:
             for ap_num in ap_num_list:
                 try:
-                    newnum = ap_num.split('_')[-1]
+                    newnum = int(ap_num.split('_')[-1])
                     #print newnum
                     if newnum > returnnum: returnnum = newnum
                 except: 
                     print 'getProcessingOutputDirectory: problem with string ', ap_num
-            returnnum = int(returnnum) + 1 # Numbered subdirectories exist, next number is ap_num
+            returnnum = returnnum + 1 # Numbered subdirectories exist, next number is ap_num
         except ValueError:
             returnnum = 0 # the data processing directory already exists, but no numbered subdirectories
 
+    #print returnnum
     return dataprocdir, returnnum
     
 def getManualProcessingOutputLogFilename(samplerootdir, imagesweeptemplate): # samplerootdir is where the image test and dataproc directories are
