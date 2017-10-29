@@ -56,7 +56,7 @@ class PhaserForm(PhaserLayoutForm):
         self.connect(processor, SIGNAL("giving_result(QString,QString,int,int)"),
                      self.get_job_results, Qt.QueuedConnection)
         if self.cw != "":  # There is a central widget, inform when logs are ready
-            self.connect(processor, SIGNAL("log_is_ready()"), self.cw.ready_log_files, Qt.QueuedConnection)
+            self.connect(processor, SIGNAL("log_is_ready()"), self.cw.selectDataSet, Qt.QueuedConnection)
         # Run
         processor.start()
         self.processor_list.append(processor)
