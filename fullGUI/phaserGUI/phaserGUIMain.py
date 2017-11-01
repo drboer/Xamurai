@@ -198,6 +198,7 @@ class PhaserForm(PhaserLayoutForm):
                     max_job_num = max(max_job_num, job.number)
             self.runNum = max(self.runNum, max_job_num + 1)
         # Finally we get the max number among running jobs and existing files
+        #self.displayWarning("update_file_info %s %s" % (full_root_dir, str(self.runNum)) )
         self.file_prefix_info.setText(os.path.join(full_root_dir, str(self.runNum)))
 
     # MTZ LAYOUT METHODS

@@ -586,7 +586,7 @@ class MainWindow(MainWindowLayout):
                                                                         self.cellc.value(), self.cellalpha.value(),
                                                                         self.cellbeta.value(), self.cellgamma.value()))
         if self.useSG.isChecked():
-            autoproc_parameters.append('symm=\\"%s\\"' % self.SG.text().lstrip().rstrip())
+            autoproc_parameters.append('symm=\\"%s\\"' % str(self.SG.text()).lstrip().rstrip())
         if self.useMinimalSpotSearch.isChecked():
             autoproc_parameters.append('XdsSpotSearchMinNumSpotsPerImage=\\"0\\"')
         if self.useResolLimits.isChecked():
