@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-from PyQt4.QtCore import pyqtSignal, QThread, QString
+#from PyQt4.QtCore import pyqtSignal, QThread, QString
+from qtpy import QtCore
 from ..common.constants import bl13_GUI_ccp4_user, bl13_GUI_ccp4_server
 from subprocess import Popen
 import os
 
 
-class BalbesProcessor(QThread):
+class BalbesProcessor(QtCore.QThread):
     # SIGNALS
-    giving_info = pyqtSignal(str)
-    giving_error = pyqtSignal(str)
-    giving_model = pyqtSignal(str, float)
-    done = pyqtSignal()
+    giving_info = QtCore.Signal(str)
+    giving_error = QtCore.Signal(str)
+    giving_model = QtCore.Signal(str, float)
+    done = QtCore.Signal()
 
     # METHODS
     def __init__(self, pdb_widget, ensemble, parent=None):

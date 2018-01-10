@@ -1,6 +1,6 @@
 import os, shlex, time
 from subprocess import Popen, PIPE, STDOUT
-from PyQt4.QtCore import QString, pyqtSignal
+from qtpy.QtCore import Signal
 from ..common.processor import FormProcessor, JobWidget
 from ..common.constants import bl13_GUI_ccp4_user, bl13_GUI_ccp4_server,\
                                bl13_GUI_cluster_user, bl13_GUI_cluster_server,\
@@ -9,7 +9,7 @@ from ..common.constants import bl13_GUI_ccp4_user, bl13_GUI_ccp4_server,\
 
 class ArcimboldoProcessor(FormProcessor):
     # SIGNALS
-    giving_result = pyqtSignal(QString, QString, int, int)
+    giving_result = Signal(str, str, int, int)
 
     # METHODS
     def __init__(self, form, parent=None):

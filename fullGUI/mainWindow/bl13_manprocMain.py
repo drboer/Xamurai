@@ -1,6 +1,8 @@
 import subprocess, shlex, os, glob
-from PyQt4.QtCore import QTimer, SIGNAL, Qt
-from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
+#from PyQt4.QtCore import QTimer, SIGNAL, Qt
+#from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
+from qtpy.QtCore import QTimer, SIGNAL, Qt
+#from qtpy.QtGui import QFileDialog, QTextCursor, QColor
 from .bl13_manprocLayout import MainWindowLayout, AutoProcJobWidget
 from .bl13_remoteProcessing import runRemoteProcessing, getManualProcessingOutputLogFilename
 from ..common.layout_utils import colorize

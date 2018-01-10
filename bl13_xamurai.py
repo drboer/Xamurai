@@ -1,5 +1,5 @@
 import sys, os
-from PyQt4.QtGui import QApplication
+from qtpy import QtCore, QtGui
 from fullGUI.mainWindow import MainWindow
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 from subprocess import Popen, PIPE
-from PyQt4.QtCore import QString, SIGNAL
+from qtpy import QtCore 
 from .phaserGUIWidgets import EnsembleWidget, ProteinCompWidget
 from ..common.processor import FormProcessor, JobWidget, pyqtSignal
 from ..common.constants import bl13_GUI_cluster_server, bl13_GUI_cluster_user,\
@@ -10,7 +10,7 @@ from ..common.constants import bl13_GUI_cluster_server, bl13_GUI_cluster_user,\
 
 class PhaserProcessor(FormProcessor):
     # SIGNALS
-    giving_result = pyqtSignal(QString, QString, int, int)
+    giving_result = QtCore.Signal(str, str, int, int)
 
     # METHODS
     def __init__(self, form, parent=None):
