@@ -1,9 +1,11 @@
 import os
-from PyQt4.QtCore import SIGNAL, Qt
-from PyQt4.QtGui import QIcon, QTextCursor, QFileDialog
+from qtpy.QtCore import SIGNAL, Qt
+from qtpy.QtGui import QIcon, QTextCursor
+from qtpy.QtWidgets import QFileDialog
 from .arcimboldoGUILayout import ArcimboldoLayoutForm
 from .arcimboldoGUIProcessor import ArcimboldoProcessor, ArcimboldoJobWidget
 from ..common.functions import now
+# RB 20171101: doesnt work yet with qtpy
 from ..common.layout_utils import set_color, colorize
 from ..common.constants import bl13_GUI_ccp4_user, bl13_GUI_ccp4_server, bl13_GUI_tmpdir, \
                                bl13_GUI_dir, bl13_GUI_arcimboldo_jobs_dir_ending, \

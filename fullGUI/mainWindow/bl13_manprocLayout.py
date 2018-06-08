@@ -1,7 +1,8 @@
 # -*- coding: utf8 -*-
 import os
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from qtpy.QtCore import QTimer, SIGNAL, SLOT, Qt
+from qtpy.QtGui import QIcon, QFont
+from qtpy.QtWidgets import QButtonGroup, QComboBox, QDialog, QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QVBoxLayout, QLabel, QLayout, QLineEdit, QMainWindow, QPushButton, QRadioButton, QScrollArea, QSpinBox, QStackedWidget, QTextBrowser, QWidget
 from ..phaserGUI.phaserGUIMain import PhaserForm
 from ..arcimboldoGUI.arcimboldoGUIMain import ArcimboldoForm
 from ..common.layout_utils import colorize, QLineInfo
@@ -44,8 +45,11 @@ class MainWindowLayout(QMainWindow):
         self.processLogFileName = ''
 
         self.datasetSelCB = QComboBox()
+        # RB 20180326: Refinement not implemented yet
+        #self.datasetSelCB.addItems(['<Select data stage>',names.stage1 + ' stage',
+        #                            names.stage2 + ' stage', names.stage3 + ' stage'])
         self.datasetSelCB.addItems(['<Select data stage>',names.stage1 + ' stage',
-                                    names.stage2 + ' stage', names.stage3 + ' stage'])
+                                    names.stage2 + ' stage'])
         self.datasetSelCB.setCurrentIndex(0)
         self.datasetList = QComboBox()
         #self.datasetList.addItem('No data yet')
@@ -121,6 +125,9 @@ class MainWindowLayout(QMainWindow):
     
         self.useMinimalSpotSearch = QRadioButton('No spot search limit')
         self.useMinimalSpotSearch.setCheckable(True)
+        self.useSmallMolecule = QRadioButton('Treat as small molecule')
+        self.useSmallMolecule.setCheckable(True)
+        self.useSmallMolecule.setEnabled(False)
         self.useResolLimits = QRadioButton('Set resolution limits to')
         self.useResolLimits.setCheckable(True)
         self.resLimitLow = QDoubleSpinBox()
@@ -285,9 +292,10 @@ class MainWindowLayout(QMainWindow):
         autoproc_layout.addWidget(self.last_image,inner_row,9)
         
         inner_row += 1
-        autoproc_layout.addWidget(self.cutsGB,inner_row,0,1,7)
+        autoproc_layout.addWidget(self.cutsGB,inner_row,0,2,7)
         autoproc_layout.addWidget(self.useMinimalSpotSearch,inner_row,7)
-        autoproc_layout.addWidget(self.runGB,inner_row,8,1,2)
+        autoproc_layout.addWidget(self.useSmallMolecule,inner_row+1,7)
+        autoproc_layout.addWidget(self.runGB,inner_row,8,2,2)
         
         autoproc_widget = QWidget()
         autoproc_widget.setLayout(autoproc_layout)
@@ -335,7 +343,8 @@ class MainWindowLayout(QMainWindow):
         # self.datasetSelCB is the stage selector dropdown
         self.connect(self.datasetSelCB, SIGNAL('currentIndexChanged(int)'), self.SelectStage)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
-        self.connect(self.refreshLogPB, SIGNAL('clicked()'), self.updateProcessingInfo)
+        #self.connect(self.refreshLogPB, SIGNAL('clicked()'), self.updateProcessingInfo)
+        self.connect(self.refreshLogPB, SIGNAL('clicked()'), self.selectLogFile)
         self.connect(self.refreshDirPB, SIGNAL('clicked()'), self.scanRootDirectory)
         self.connect(self.refresh_logs, SIGNAL('clicked()'), self.refreshLogFiles)
         self.connect(self.backPB, SIGNAL('clicked()'), self.setStatusBack)

@@ -1,5 +1,5 @@
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from qtpy.QtCore import SIGNAL
+from qtpy.QtWidgets import QDialog, QGridLayout, QLineEdit, QPushButton, QComboBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QWidget
 from ..common.layout_utils import *
 
 
@@ -42,8 +42,8 @@ class ArcimboldoLayoutForm(QDialog):
         mtz_columns_layout.addWidget(self.mtz_column_sig)
         self.mtz_info = QWidget()
         mtz_info_layout = QVBoxLayout()
-        self.mtz_info_resolution = QLineInfo("Resolution Range: ")
-        self.mtz_info_cell = QLineInfo("Cell Dimensions: ")
+        self.mtz_info_resolution = QLabel("Resolution Range: ")
+        self.mtz_info_cell = QLabel("Cell Dimensions: ")
         mtz_info_layout.addWidget(self.mtz_info_resolution)
         mtz_info_layout.addWidget(self.mtz_info_cell)
         self.mtz_info.setLayout(mtz_info_layout)
@@ -65,7 +65,7 @@ class ArcimboldoLayoutForm(QDialog):
         prediction_layout.addWidget(self.prediction_browse)
         # Title/root (working directory
         self.root_edit = QLineEdit("")
-        self.root_info = QLineInfo("Next job number: ")
+        self.root_info = QLabel("Next job number: ")
         # Run buttons
         self.run_cb = QComboBox()
         self.run_cb.addItems(["Psipred + Arcimboldo", "Arcimboldo", "Psipred"])

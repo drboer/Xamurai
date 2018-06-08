@@ -1,7 +1,8 @@
 #!usr/bin/env python
 import os, subprocess, shlex
-from PyQt4.QtCore import SIGNAL, Qt
-from PyQt4.QtGui import QIcon, QMessageBox, QFileDialog, QTextCursor
+from qtpy.QtCore import SIGNAL, Qt
+from qtpy.QtGui import QIcon, QTextCursor
+from qtpy.QtWidgets import QMessageBox, QFileDialog
 from .phaserGUILayout import PhaserLayoutForm, SummaryDisplay
 from .phaserGUIProcessor import PhaserProcessor, PhaserJobWidget
 from .phaserGUIWidgets import EnsembleWidget, ProteinCompWidget

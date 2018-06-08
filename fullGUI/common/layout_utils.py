@@ -1,5 +1,5 @@
-from PyQt4.QtGui import QLabel, QWidget, QSpinBox, QHBoxLayout, QPalette, QColor
-
+from qtpy.QtWidgets import QLabel, QWidget, QSpinBox, QHBoxLayout 
+from qtpy.QtGui import QPalette, QColor
 
 # MINOR WIDGETS
 class QLineInfo(QLabel):

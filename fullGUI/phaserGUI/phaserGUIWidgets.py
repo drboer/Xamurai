@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import urllib, os, shlex, subprocess
-from PyQt4.QtCore import Qt, SIGNAL, SLOT, QTimer
-from PyQt4.QtGui import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, \
+#from PyQt4.QtCore import Qt, SIGNAL, SLOT, QTimer
+#from PyQt4.QtGui import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, \
+#                        QDialog, QLabel, QLineEdit, QComboBox, QSpinBox, \
+#                        QStackedWidget, QFileDialog, QCheckBox
+from qtpy.QtCore import Qt, SIGNAL, SLOT, QTimer
+from qtpy.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, \
                         QDialog, QLabel, QLineEdit, QComboBox, QSpinBox, \
                         QStackedWidget, QFileDialog, QCheckBox
 from ..common.layout_utils import IDENSelector, num_widget, QLineInfo, CustomObj

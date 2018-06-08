@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#from PyQt4.QtCore import pyqtSignal, QThread, QString
 from qtpy import QtCore
 from ..common.constants import bl13_GUI_ccp4_user, bl13_GUI_ccp4_server
 from subprocess import Popen

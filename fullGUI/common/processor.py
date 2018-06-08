@@ -1,16 +1,16 @@
-from PyQt4.QtCore import pyqtSignal, QThread
-from PyQt4.QtGui import QWidget, QHBoxLayout, QLabel, QPushButton
+from qtpy.QtCore import Signal, SIGNAL, QThread
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
 from ..common.layout_utils import QLineInfo, colorize
 
 
 class FormProcessor(QThread):
     # SIGNALS
-    giving_info = pyqtSignal(str)
-    giving_warn = pyqtSignal(str)
-    giving_error = pyqtSignal(str)
-    info_read = pyqtSignal(str)
-    log_is_ready = pyqtSignal()
-    update_job_status = pyqtSignal(str,str)
+    giving_info = Signal(str)
+    giving_warn = Signal(str)
+    giving_error = Signal(str)
+    info_read = Signal(str)
+    log_is_ready = Signal()
+    update_job_status = Signal(str,str)
 
     # METHODS
     def __init__(self, form, parent=None):

@@ -1,8 +1,7 @@
 import subprocess, shlex, os, glob
-#from PyQt4.QtCore import QTimer, SIGNAL, Qt
-#from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
 from qtpy.QtCore import QTimer, SIGNAL, Qt
-#from qtpy.QtGui import QFileDialog, QTextCursor, QColor
+from qtpy.QtGui import QTextCursor, QColor
+from qtpy.QtWidgets import QFileDialog
 from .bl13_manprocLayout import MainWindowLayout, AutoProcJobWidget
 from .bl13_remoteProcessing import runRemoteProcessing, getManualProcessingOutputLogFilename
 from ..common.layout_utils import colorize
@@ -257,7 +256,8 @@ class MainWindow(MainWindowLayout):
         # Approved processing log file
         log_file = os.path.join(path, bl13_GUI_phasing_dir, "currently_approved_processing.log")
         self.logsList.addItem(log_file + ' (Approved processing log file)')
-        self.logsList.setItemData(0, QColor(Qt.gray), Qt.TextColorRole)
+        # RB 20171001: following line is broken after changing to qtpy
+        #self.logsList.setItemData(0, QColor(Qt.gray), Qt.TextColorRole)
         # All sum, log files, from phaser, arcimboldo...
         if len(self.datasetMasterSumList) > 0:            
             for item in self.datasetMasterSumList[index]:
@@ -352,7 +352,8 @@ class MainWindow(MainWindowLayout):
                 data_stage = self.get_state(self.datasetMasterDataList[self.datasetMasterNameList[key]])
                 (text, color) = self.state_string(data_stage)
                 self.datasetList.insertItem(count, key + ' ' + text)
-                self.datasetList.setItemData(count, color, Qt.TextColorRole)
+                # RB 20171001: following line is broken after changing to qtpy
+                #self.datasetList.setItemData(count, color, Qt.TextColorRole)
                 count += 1
             self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
             return
@@ -410,33 +411,31 @@ class MainWindow(MainWindowLayout):
         print 'selectLogFile', self.latestproclogfile, str(self.logsList.currentText())
         stage = self.datasetSelCB.currentIndex()
         log_file = str(self.logsList.currentText())
-        if stage == 0 or stage == 1:
-            self.processLogFile.setText(log_file)
-            print 'Showing processing file: %s' % log_file
-            self.updateProcessingInfo()
-        elif stage == 2:
-            if self.logsList.currentIndex() == 0 and os.path.isfile(log_file.split()[0]):
-                log_file = os.readlink(log_file.split()[0])
+        print self.logsList.currentText()
+        if self.logsList.currentText() == '':
+            print 'No log file selected'
+            self.textOutput.setPlainText('No log file selected')
+        else:
+            if stage == 0 or stage == 1 or (stage==2 and self.logsList.currentIndex() == 0):
+                self.processLogFile.setText(log_file)
+                file2display = str(self.logsList.currentText())
                 print 'Showing processing file: %s' % log_file
-                # If there is an .html, it should be displayed instead
-                html_summary = "/".join(log_file.split("/")[:-1] + ["summary.html"])
+                self.updateProcessingInfo(self.logsList.currentText())
+                html_summary = "/".join(file2display.split("/")[:-1] + ["summary.html"])
                 print 'Looking for summary.html: %s' % html_summary
                 if os.path.isfile(html_summary):
-                    with open(html_summary,'r') as summary:
-                        html = summary.read()
-                    self.textOutput.setHtml(html)
-                    self.textOutput.verticalScrollBar().setValue(380)
-                # If there is not, display the log and continue as usual
-                else:
-                    with open(log_file,'r') as log:
-                        text = log.read()
+                    file2display = html_summary
+            elif stage == 2:
+                file2display = str(self.logsList.currentText())
+
+            if os.path.isfile(file2display):
+                with open(file2display,'r') as log:
+                    text = log.read()
+                if file2display.endswith(".html") or file2display.endswith("autoMRphaser.log"):
+                    cur_dir = os.getcwd()
+                    proc_dir = "/".join(file2display.split("/")[:-1])
+                    os.chdir(proc_dir)
                     self.textOutput.setHtml(text)
-                    self.scroll_to_end()
-            elif os.path.isfile(log_file):
-                print 'Showing summary file: %s' % log_file
-                text = open(log_file, 'r').read()
-                if log_file.endswith(".html") or log_file.endswith("autoMRphaser.log"):
-                    self.textOutput.setHtml(text)  # The log file is an HTML
                 else:
                     self.textOutput.setText(text)
                 self.scroll_to_end()
@@ -460,71 +459,39 @@ class MainWindow(MainWindowLayout):
         self.logsList.setCurrentIndex(logindex)
         self.connect(self.logsList, SIGNAL('currentIndexChanged(int)'), self.selectLogFile)
         
-    def updateProcessingInfo(self):
+    def updateProcessingInfo(self, locallogfile):
         # This function finds the processing file and extracts parameters from it
+        # it is only meant for the images to mtz stage 
         print 'updateProcessingInfo'
-        if self.datasetSelCB.currentIndex() == 0: # stage 0
-            selected_file = str(self.processLogFile.text())
-            if os.path.isfile(selected_file):
-                text=open(selected_file).read()
-                if '.html' in selected_file: self.textOutput.setHtml(html)
-                else: self.textOutput.setPlainText(text)
-        elif self.datasetSelCB.currentIndex() == 1: # stage 1
-            if self.processLogFile.text() == '':
-                print 'empty file'
-                self.textOutput.setPlainText('')
-            else:
-                selected_file = str(self.processLogFile.text())
-                if os.path.isfile(selected_file):
-                    text=open(selected_file).read()
-                    # If there is an .html, it should be displayed instead
-                    html_summary = "/".join(selected_file.split("/")[:-1] + ["summary.html"])
-                    if os.path.isfile(html_summary):
-                        print 'HTML file at %s' % html_summary
-                        curdir = os.getcwd()
-                        os.chdir( "/"+str("/".join(selected_file.split("/")[1:-1])) )
-                        with open(html_summary,'r') as summary:
-                            html = summary.read()
-                        print 'Current dir %s' % os.getcwd()
-                        self.textOutput.setHtml(html)
-                        #os.chdir(curdir)
-                        #self.textOutput.verticalScrollBar().setValue(380)
-                    # If there is not, display the log and continue as usual
-                    else:
-                        print 'Log file at %s' % selected_file
-                        self.textOutput.setPlainText(text)
-                    self.scroll_to_end()
-                    textlines = text.splitlines()
-                    self.displayInfo('Log file contents updated')
-                    for line in textlines:
-                        srchstr =  'Cell parameters ......................................'
-                        if srchstr in line:
-                            cellpars = line.split(srchstr)[1].split()
-                            #print 'cellpars %s' %str(cellpars)
-                            if len(cellpars) == 6:
-                                self.useCell.setCheckable(False)
-                                self.cella.setValue(float(cellpars[0]))
-                                self.cellb.setValue(float(cellpars[1]))
-                                self.cellc.setValue(float(cellpars[2]))
-                                self.cellalpha.setValue(float(cellpars[3]))
-                                self.cellbeta.setValue(float(cellpars[4]))
-                                self.cellgamma.setValue(float(cellpars[5]))
-                                self.useCell.setCheckable(True)
-                        srchstr = 'Resolution ...........................................'
-                        if srchstr in line:
-                            resol = line.split(srchstr)[1].split()
-                            if len(resol) == 4:
-                                self.resLimitLow.setValue(float(resol[0]))
-                                self.resLimitHigh.setValue(float(resol[2]))
-                        srchstr = 'Spacegroup name ......................................'
-                        if srchstr in line:
-                            self.useSG.setCheckable(False)
-                            self.SG.setText( line.split(srchstr)[1].lstrip().rstrip() )
-                            self.useSG.setCheckable(True)
-                else:
-                    self.displayError('Can\'t read, not a file: %s' % selected_file, prnt=True)
-        elif self.datasetSelCB.currentIndex() == 2: # stage 2: analysis, not handled here
-            pass
+        # read contents of log file extract space group info etc from output file
+        text=open(locallogfile).read()
+        textlines = text.splitlines()
+        self.displayInfo('Log file contents updated')
+        for line in textlines:
+            srchstr =  'Cell parameters ......................................'
+            if srchstr in line:
+                cellpars = line.split(srchstr)[1].split()
+                #print 'cellpars %s' %str(cellpars)
+                if len(cellpars) == 6:
+                    self.useCell.setCheckable(False)
+                    self.cella.setValue(float(cellpars[0]))
+                    self.cellb.setValue(float(cellpars[1]))
+                    self.cellc.setValue(float(cellpars[2]))
+                    self.cellalpha.setValue(float(cellpars[3]))
+                    self.cellbeta.setValue(float(cellpars[4]))
+                    self.cellgamma.setValue(float(cellpars[5]))
+                    self.useCell.setCheckable(True)
+            srchstr = 'Resolution ...........................................'
+            if srchstr in line:
+                resol = line.split(srchstr)[1].split()
+                if len(resol) == 4:
+                    self.resLimitLow.setValue(float(resol[0]))
+                    self.resLimitHigh.setValue(float(resol[2]))
+            srchstr = 'Spacegroup name ......................................'
+            if srchstr in line:
+                self.useSG.setCheckable(False)
+                self.SG.setText( line.split(srchstr)[1].lstrip().rstrip() )
+                self.useSG.setCheckable(True)
 
     # MAIN (autoproc)
     def runManProc(self):
@@ -556,7 +523,12 @@ class MainWindow(MainWindowLayout):
         
         genprocdir, num, jobprocdir, joblogfile = getManualProcessingOutputLogFilename(data_dir_root, sampleroot)
         print genprocdir, num, jobprocdir, joblogfile
-        os.mkdir(jobprocdir)
+        if not os.path.exists(os.path.join(str(self.datasetList.currentText()),bl13_GUI_dataproc_dir)):
+            os.mkdir(os.path.join(str(self.datasetList.currentText()),bl13_GUI_dataproc_dir))
+        try:     
+            os.mkdir(jobprocdir)
+        except:
+            raise Exception('cant make processing dir')
         
         # Display job information on screen
         jobWidget = AutoProcJobWidget(sampleroot, num, jobprocdir)
@@ -623,7 +595,7 @@ class MainWindow(MainWindowLayout):
         xia2_parameters = ['pipeline=3d']
         # image specification
         if self.useImageSpec.isChecked():
-            xia2_parameters.append('image=%s_####.cbf:%d:%d' % ( os.path.join(data_dir, self.imgName.text()), self.first_image.value(), self.last_image.value() ) )
+            xia2_parameters.append('image=%s_0001.cbf:%d:%d' % ( os.path.join(data_dir, self.imgName.text()), self.first_image.value(), self.last_image.value() ) )
         else:
             xia2_parameters.append(data_dir)
 
@@ -635,6 +607,8 @@ class MainWindow(MainWindowLayout):
             xia2_parameters.append('space_group=\\\'%s\\\'' % str(self.SG.text()).lstrip().rstrip() )
         #if self.useMinimalSpotSearch.isChecked():
         #    xia2_parameters.append('XdsSpotSearchMinNumSpotsPerImage=\\"0\\"')
+        if self.useSmallMolecule.isChecked():
+            xia2_parameters.append('small_molecule=true')
         if self.useResolLimits.isChecked():
             xia2_parameters.append('d_max=%.2f' % self.resLimitLow.value())
             xia2_parameters.append('d_min=%.2f' % self.resLimitHigh.value())
@@ -661,10 +635,12 @@ class MainWindow(MainWindowLayout):
         
     def procprogChanged(self):
         if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
+            self.useSmallMolecule.setEnabled(False)
             self.useMinimalSpotSearch.setEnabled(True)
             self.useRmerge.setEnabled(True)
             self.Rmerge_cut.setEnabled(True)
         elif str(self.procprogSelCB.currentText()).split(' ')[0] == 'xia2':
+            self.useSmallMolecule.setEnabled(True)
             self.useMinimalSpotSearch.setEnabled(False)
             self.useRmerge.setEnabled(False)
             self.Rmerge_cut.setEnabled(False)

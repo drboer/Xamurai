@@ -3,7 +3,7 @@ import os
 from subprocess import Popen, PIPE
 from qtpy import QtCore 
 from .phaserGUIWidgets import EnsembleWidget, ProteinCompWidget
-from ..common.processor import FormProcessor, JobWidget, pyqtSignal
+from ..common.processor import FormProcessor, JobWidget, SIGNAL
 from ..common.constants import bl13_GUI_cluster_server, bl13_GUI_cluster_user,\
                                bl13_GUI_phaser_jobs_dir_ending
 
@@ -21,7 +21,8 @@ class PhaserProcessor(FormProcessor):
         self.work_dir = ""
 
     def exit(self, int_return_code=0):
-        self.giving_result.emit(self.work_dir, self.name, self.run_num, int_return_code)
+        print str(self.work_dir), str(self.name)
+        self.giving_result.emit(str(self.work_dir), str(self.name), self.run_num, int_return_code)
         self.deleteLater()
 
     def work(self):

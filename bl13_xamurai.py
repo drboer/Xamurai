@@ -1,7 +1,8 @@
-import sys, os
-from qtpy import QtCore, QtGui
-from fullGUI.mainWindow import MainWindow
+#AUTHORS: Roeland Boer, Marc Roda, Judith Juanhuix
 
+import sys, os
+from qtpy.QtWidgets import QApplication
+from fullGUI.mainWindow import MainWindow
 
 def userdir(hint1='', hint2='', hint3=''):
     '''
