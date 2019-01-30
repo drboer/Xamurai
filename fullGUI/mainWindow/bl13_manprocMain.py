@@ -1,6 +1,6 @@
 import subprocess, shlex, os, glob
-from qtpy.QtCore import QTimer, SIGNAL, Qt
-from qtpy.QtGui import QTextCursor, QColor
+from PyQt4.QtCore import QTimer, SIGNAL, Qt
+from PyQt4.QtGui import QFileDialog, QTextCursor, QColor
 from qtpy.QtWidgets import QFileDialog
 from .bl13_manprocLayout import MainWindowLayout, AutoProcJobWidget
 from .bl13_remoteProcessing import runRemoteProcessing, getManualProcessingOutputLogFilename
@@ -592,7 +592,8 @@ class MainWindow(MainWindowLayout):
     def getXIA2Parameters(self, data_dir):
         print 'getXIA2Parameters'
 
-        xia2_parameters = ['pipeline=3d']
+        xia2_parameters = [str('pipeline=%s' % self.setXIAProcessingOption.currentText())]
+        #xia2_parameters = ['pipeline=3dii']
         # image specification
         if self.useImageSpec.isChecked():
             xia2_parameters.append('image=%s_0001.cbf:%d:%d' % ( os.path.join(data_dir, self.imgName.text()), self.first_image.value(), self.last_image.value() ) )
@@ -636,11 +637,13 @@ class MainWindow(MainWindowLayout):
     def procprogChanged(self):
         if str(self.procprogSelCB.currentText()).split(' ')[0] == 'autoproc':
             self.useSmallMolecule.setEnabled(False)
+            self.setXIAProcessingOption.setEnabled(False)
             self.useMinimalSpotSearch.setEnabled(True)
             self.useRmerge.setEnabled(True)
             self.Rmerge_cut.setEnabled(True)
         elif str(self.procprogSelCB.currentText()).split(' ')[0] == 'xia2':
             self.useSmallMolecule.setEnabled(True)
+            self.setXIAProcessingOption.setEnabled(True)
             self.useMinimalSpotSearch.setEnabled(False)
             self.useRmerge.setEnabled(False)
             self.Rmerge_cut.setEnabled(False)

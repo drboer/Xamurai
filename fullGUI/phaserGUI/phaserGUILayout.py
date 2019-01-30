@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
-from qtpy.QtCore import Qt, SIGNAL
-from qtpy.QtWidgets import QCheckBox, QComboBox, QGridLayout, QGroupBox, QDialog, QLayout, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QTabWidget
+from qtpy.QtCore import Qt, SIGNAL, SLOT
+from qtpy.QtWidgets import QCheckBox, QComboBox, QGridLayout, QGroupBox, QDialog, QLayout, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QTabWidget,QTextBrowser
 from ..common.layout_utils import *
 
 

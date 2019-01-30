@@ -128,6 +128,11 @@ class MainWindowLayout(QMainWindow):
         self.useSmallMolecule = QRadioButton('Treat as small molecule')
         self.useSmallMolecule.setCheckable(True)
         self.useSmallMolecule.setEnabled(False)
+        
+        self.setXIAProcessingOption = QComboBox()
+        self.setXIAProcessingOption.addItems(['3dii','dials'])
+        self.setXIAProcessingOption.setEnabled(False)
+        
         self.useResolLimits = QRadioButton('Set resolution limits to')
         self.useResolLimits.setCheckable(True)
         self.resLimitLow = QDoubleSpinBox()
@@ -277,9 +282,9 @@ class MainWindowLayout(QMainWindow):
         self.cutsGB.layout().addWidget(self.IoverSig_cut,1,4)
         
         inner_row = 0
-        autoproc_layout.addWidget(self.cellGB,inner_row,0,1,10)       
+        autoproc_layout.addWidget(self.cellGB,inner_row,0,2,10)       
       
-        inner_row += 1
+        inner_row += 2
         autoproc_layout.addWidget(self.useSG,inner_row,0)
         autoproc_layout.addWidget(self.SG,inner_row,1)     
         autoproc_layout.addWidget(self.useResolLimits,inner_row,2)
@@ -291,16 +296,22 @@ class MainWindowLayout(QMainWindow):
         autoproc_layout.addWidget(self.first_image,inner_row,8)
         autoproc_layout.addWidget(self.last_image,inner_row,9)
         
+        self.procoptionsGB = QGroupBox('Processing options')
+        self.procoptionsGB.setLayout(QGridLayout())
+        self.procoptionsGB.layout().addWidget(self.useMinimalSpotSearch,0,0)
+        self.procoptionsGB.layout().addWidget(self.useSmallMolecule,1,0)
+        self.procoptionsGB.layout().addWidget(self.setXIAProcessingOption,2,0)
+        
         inner_row += 1
         autoproc_layout.addWidget(self.cutsGB,inner_row,0,2,7)
-        autoproc_layout.addWidget(self.useMinimalSpotSearch,inner_row,7)
-        autoproc_layout.addWidget(self.useSmallMolecule,inner_row+1,7)
+        autoproc_layout.addWidget(self.procoptionsGB,inner_row,7,2,1)
+        #autoproc_layout.addWidget(self.runGB,inner_row,8,1,3)
         autoproc_layout.addWidget(self.runGB,inner_row,8,2,2)
         
         autoproc_widget = QWidget()
         autoproc_widget.setLayout(autoproc_layout)
         self.stack_widget.addWidget(autoproc_widget)
-        self.autoproc_widget_size = 220
+        self.autoproc_widget_size = 300 #
         
         #Second widget
         second_widget = QWidget()
