@@ -16,6 +16,12 @@ import names
 # # command to find image directories and time stamp
 #find . -type d -name "images" -printf '%c %p\n'
 
+DATA_UNKNOWN = 0
+DATA_MXCUBE = 1
+DATA_XALOC = 2
+MXCUBE_DATA_DIR = "RAW_DATA"
+MXCBUE_PROCESS_DIR = "PROCESS_DATA"
+
 class MainWindow(MainWindowLayout):
     def __init__(self, app, *args):
         
@@ -25,6 +31,7 @@ class MainWindow(MainWindowLayout):
         
         # Variables
         self.app = app
+        self.datacollectionGUI = DATA_UNKNOWN
         self.datakeys = ['name', 'processed', 'approved', 'solved']
         # keys are the directory names, the index points to the data list
         self.datasetMasterNameList = {}
@@ -48,6 +55,9 @@ class MainWindow(MainWindowLayout):
             
     def findProcessingLogFiles(self, path=''):
         """ Searches for processing log files in a sample root path """
+        newlogsfound = False # backward compatibility with older XALOC paths (when processing files were still in images)
+        log_list = []
+        data_set_index = self.datasetMasterNameList[path]
         print 'findProcessingLogFiles:'
         latestlogfile = None
         # Get information
@@ -57,41 +67,55 @@ class MainWindow(MainWindowLayout):
             print 'findProcessingLogFiles: empty path, returning'
             self.textOutput.setPlainText('')
             return ''
-        print 'Looking for process files in %s' % path
+        #print 'Looking for process files in %s' % path
         self.displayInfo('Looking for process files in %s' % path, prnt=True)
-        newlogsfound = False # backward compatibility with older XALOC paths (when processing files were still in images)
-        data_set_index = self.datasetMasterNameList[path]
-        # Get approved and other processing files
-        log_list = []
-        analysis_dir = os.path.join(str(path), bl13_GUI_phasing_dir)
-        if os.path.isdir(analysis_dir):
-            for name_file in os.listdir(analysis_dir): 
-                if name_file == "currently_approved_processing.log":
-                    log_file = os.path.join(analysis_dir, name_file)
-                    log_list.append(log_file)
-                    latestlogfile = log_file
-                    break
-        if len(log_list) > 0:
-            self.displayInfo('Found approved log files', prnt=True)
-        # Get older processing log files
-        manual_log_file = os.path.join(str(path), 'manual_processing.log')
-        if os.path.isfile(manual_log_file): 
-            latestlogfile = manual_log_file
-            log_list.append(manual_log_file)
-        # Look for newer processing log files in dataproc directories
-        dataproc_dir = os.path.join(str(path), bl13_GUI_dataproc_dir)
+            
+        #find the MXCUBE default processing log files
+        if self.datacollectionGUI == DATA_MXCUBE:
+            mxcube_dataproc_dir = os.path.split(path,MXCUBE_DATA_DIR)[0]
+            dataproc_dir = os.path.join(path,"PROCESS_DATA/RESULTS")
+            print 'Looking for mxcube processed data in dataproc_dir %s' % dataproc_dir
+            if os.path.isdir(dataproc_dir):
+                print 'Looking for mxcube processed data in dataproc_dir %s' % dataproc_dir
+                for dir_file in sorted(os.listdir(dataproc_dir)):
+                    if os.path.isdir(os.path.join(dataproc_dir, dir_file)) and "ednaproc" in dirfile and not "ref" in dirfile:
+                        #print 'list of files: %s\n' % os.listdir(os.path.join(dataproc_dir, dir_file))
+                        #for name_file in os.listdir(os.path.join(dataproc_dir, dir_file)):
+                        #    if name_file.endswith("processing.log"):
+                        os.chdir(os.path.join(dataproc_dir, dir_file))
+                        for logfile in glob.glob('*/*/*/fastprocintegration_ids/*processing.log'):# what is the mxcube processing output filename??
+                            #log_list.append(os.path.join(dataproc_dir, dir_file, name_file))
+                            fulllogname = os.path.join(dataproc_dir, dir_file, logfile)
+                            print 'Found log file %s' % fulllogname
+                            log_list.append(fulllogname)
+                 
         # To find the highest index of hand processed data
         hid = -1
-        if os.path.isdir(dataproc_dir):
+        if self.datacollectionGUI == DATA_XALOC:
+            # Get approved and other processing files
+            analysis_dir = os.path.join(str(path), bl13_GUI_phasing_dir)
+            if os.path.isdir(analysis_dir):
+                for name_file in os.listdir(analysis_dir): 
+                    if name_file == "currently_approved_processing.log":
+                        log_file = os.path.join(analysis_dir, name_file)
+                        log_list.append(log_file)
+                        latestlogfile = log_file
+                        break
+            if len(log_list) > 0:
+                self.displayInfo('Found approved log files', prnt=True)
+            # Get older processing log files
+            manual_log_file = os.path.join(str(path), 'manual_processing.log')
+            if os.path.isfile(manual_log_file): 
+                 latestlogfile = manual_log_file
+                 log_list.append(manual_log_file)
             #print 'dataproc_dir %s' % dataproc_dir
-            for dir_file in sorted(os.listdir(dataproc_dir)):
-                if os.path.isdir(os.path.join(dataproc_dir, dir_file)):
-                    #print 'list of files: %s\n' % os.listdir(os.path.join(dataproc_dir, dir_file))
-                    #for name_file in os.listdir(os.path.join(dataproc_dir, dir_file)):
-                    #    if name_file.endswith("processing.log"):
-                    os.chdir(os.path.join(dataproc_dir, dir_file))
-                    for logfile in glob.glob('*processing.log'):
-                            #log_list.append(os.path.join(dataproc_dir, dir_file, name_file))
+            # Look for newer processing log files in dataproc directories
+            dataproc_dir = os.path.join(str(path), bl13_GUI_dataproc_dir)
+            if os.path.isdir(dataproc_dir):
+                for dir_file in sorted(os.listdir(dataproc_dir)):
+                    if os.path.isdir(os.path.join(dataproc_dir, dir_file)):
+                        os.chdir(os.path.join(dataproc_dir, dir_file))
+                        for logfile in glob.glob('*processing.log'):
                             fulllogname = os.path.join(dataproc_dir, dir_file, logfile)
                             print 'Found log file %s' % fulllogname
                             log_list.append(fulllogname)
@@ -105,18 +129,18 @@ class MainWindow(MainWindowLayout):
                                     hid = int(manrunnumber)
                                     latestlogfile = os.path.join(dataproc_dir, dir_file, logfile)
                                 #break
-        #print 'The manual processing file with highest index is ', hid
-        if newlogsfound:
-            self.displayInfo('Found processing files', prnt=True)
-        # Get default processing file from older paths
-        images_dir = os.path.join(str(path), 'images')
-        print 'The image dir is ', images_dir
-        if not newlogsfound:
-          print 'No new default processing logs found, checking for old default processing data files in ',os.path.join(dataproc_dir, images_dir)
-          os.chdir(os.path.join(dataproc_dir, images_dir))
-          for name_file in glob.glob('*_defaultprocessing.log'):
-          #for name_file in os.listdir(os.path.join(images_dir)): # this is very, very slow
-          #  if name_file.endswith("_defaultprocessing.log"):
+            #print 'The manual processing file with highest index is ', hid
+            if newlogsfound:
+                self.displayInfo('Found processing files', prnt=True)
+            # Get default processing file from older paths
+            images_dir = os.path.join(str(path), 'images')
+            print 'The image dir is ', images_dir
+            if not newlogsfound:
+                print 'No new default processing logs found, checking for old default processing data files in ',os.path.join(dataproc_dir, images_dir)
+                os.chdir(os.path.join(dataproc_dir, images_dir))
+            for name_file in glob.glob('*_defaultprocessing.log'):
+            #for name_file in os.listdir(os.path.join(images_dir)): # this is very, very slow
+            #  if name_file.endswith("_defaultprocessing.log"):
                 default_log = os.path.join(images_dir, name_file)
                 log_list.append(default_log)
                 self.displayInfo('Found old default processing file', prnt=True)
@@ -731,8 +755,58 @@ class MainWindow(MainWindowLayout):
             self.datasetSelCB.setCurrentIndex(3)
         return
 
-    # .dataInfo related methods
     def scanRootDirectory(self, request=False):
+        if os.path.isdir(self.directory.text()): 
+            dirlist = os.listdir(self.directory.text());
+            if MXCUBE_DATA_DIR in dirlist:
+                print ' MXCUBE data assumed'
+	        self.scanRootDirectory_MXCUBE(request)
+	        self.datacollectionGUI = DATA_MXCUBE
+	    else:
+                print ' XALOC data assumed'
+	        self.scanRootDirectory_XALOC(request)
+	        self.datacollectionGUI = DATA_XALOC
+
+    
+    def scanRootDirectory_MXCUBE(self, request=False):
+        if os.path.isdir(self.directory.text()): 
+            shcom = 'find %s ' % os.path.join(self.directory.text(),MXCUBE_DATA_DIR)
+            shcom = shcom + '-maxdepth %d -type f -name "[!ref]*0001.cbf"' % bl13_GUI_searchdepth
+            imageslist = subprocess.Popen(shcom, shell=True, stdout=subprocess.PIPE).stdout.read().splitlines()
+            print shcom, imageslist
+            if len(imageslist) != len(self.datasetMasterNameList) or request:
+                self.displayInfo('New data directories found')
+                self.datasetMasterNameList = {}
+                self.datasetMasterDataList = []
+                nimdir = 0
+                for imdir in imageslist:
+                    #cbname = self.extractPrefix(imdir)
+                    #cbname = (imdir.split()[0]).rstrip('images')
+                    cbname = imdir.rstrip('0001.cbf')
+                    cbname = cbname.rstrip('0123456789') # in case the template uses 5 numbers
+                    cbname = cbname.rstrip('_') # CANNOT be merged with previous line (w1_0001)!!!!! Remove trailing underscore 
+                    self.infodirname = cbname.split(MXCUBE_DATA_DIR)[0]
+                    print cbname, self.infodirname
+                    (thisdata, need_to_write) = self.readDataInfoFile(self.infodirname, cbname)
+                    #print thisdata
+                    self.datasetMasterNameList[cbname] = nimdir
+                    self.datasetMasterDataList.append(thisdata)
+                    self.latestlogfile, log_list = self.findProcessingLogFiles(cbname)
+                    self.datasetMasterLogsList.insert(nimdir, log_list)
+                    self.latestlogfile, log_list = self.findAnalysisLogFiles(cbname)
+                    self.datasetMasterSumList.insert(nimdir, sorted(log_list))
+                    if need_to_write:
+                        self.writeDataInfoFile(self.infodirname,cbname,thisdata)
+                    nimdir = nimdir + 1
+                # Now reset the selection list
+                self.repopulateDataSetList()
+        else: 
+            print 'Not a valid directory, ignored'
+            
+
+    
+    # .dataInfo related methods
+    def scanRootDirectory_XALOC(self, request=False):
         """ repopulates the dataset pulldown """
         print 'scanRootDirectory: Finding images directories in root %s' % self.directory.text()
         if os.path.isdir(self.directory.text()): 
@@ -770,8 +844,8 @@ class MainWindow(MainWindowLayout):
         else: 
             print 'Not a valid directory, ignored'
     
-    def readDataInfoFile(self, indir):
-        infofile = os.path.join(indir,'.dataInfo')
+    def readDataInfoFile(self, infodirname, indir):
+        infofile = os.path.join(infodirname,'.dataInfo')
         self.displayInfo('Looking for info file %s' % infofile, prnt=True) 
         need_to_write = True
         inkey = [indir, 'Not_processed', 'Not_approved', 'Not_solved']
@@ -788,9 +862,9 @@ class MainWindow(MainWindowLayout):
                 need_to_write = False
         return intup, need_to_write
 
-    def writeDataInfoFile(self, indir, intup):
+    def writeDataInfoFile(self, infodirname, indir, intup):
         ### indir is the directory on top of the images and test directories
-        infofile = os.path.join(str(indir),'.dataInfo')
+        infofile = os.path.join(str(infodirname),'.dataInfo')
         #intupd = dict(intup)
         print ' Writing to file %s' % infofile
         print intup
