@@ -782,7 +782,8 @@ class MainWindow(MainWindowLayout):
         return
 
     def scanRootDirectory(self, request=False):
-        print 'directory.text():',self.directory.text()
+        print 'Looking for the string ',MXCUBE_RESULTSROOTDIR_STRING,' in ',self.directory.text()
+        
         if os.path.isdir(self.directory.text()): 
             #dirlist = os.listdir(self.directory.text());
             if MXCUBE_RESULTSROOTDIR_STRING in self.directory.text():
@@ -800,6 +801,7 @@ class MainWindow(MainWindowLayout):
 
     def scanRootDirectory_MXCUBE(self, request=False):
         ''' Look for XDS.INP files in the directory tree using the parser '''
+        print 'scanRootDirectory_MXCUBE: Finding images directories in root %s' % self.directory.text()
         if os.path.isdir(self.directory.text()): 
             xdsfilelist = FileBrowser.findMxCubeProcessingXDSINP(FileBrowser(),self.directory.text())
             if len(xdsfilelist) != len(self.datasetMasterNameList) or request:
