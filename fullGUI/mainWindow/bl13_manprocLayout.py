@@ -19,7 +19,7 @@ class MainWindowLayout(QMainWindow):
                 
         ### To get updated data from the robot about crystal info, centering etc, a thread is started
         self.eventTimer = QTimer()
-        self.connect(self.eventTimer, SIGNAL('timeout()'), self.scanRootDirectory)
+        #self.connect(self.eventTimer, SIGNAL('timeout()'), self.scanRootDirectory)
         self.eventTimer.start(10000)
         self.setFixedWidth(1120)
         self.resize(1120,800)
@@ -349,7 +349,7 @@ class MainWindowLayout(QMainWindow):
         
         self.show()
 
-                #self.connect(self.directory, SIGNAL('textChanged(QString)'), self.updateFileTemplate)
+        #self.connect(self.directory, SIGNAL('textChanged(QString)'), self.updateFileTemplate)
         self.connect(self.datasetList, SIGNAL('currentIndexChanged(int)'), self.selectDataSet)
         # self.datasetSelCB is the stage selector dropdown
         self.connect(self.datasetSelCB, SIGNAL('currentIndexChanged(int)'), self.SelectStage)

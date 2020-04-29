@@ -41,7 +41,7 @@ class PhaserProcessor(FormProcessor):
                 raise Exception("The MTZ file you specified doesn't exist")
             mtz_input = "\nHKLI " + mtz_in + "\nLABI F=" + f + " SIGF=" + sigf
             if self.form.mtz_space_group_check.isChecked():
-                mtz_input += " SGAL SELE ALL"
+                mtz_input += "\nSGALTERNATIVE SELECT ALL"
             # PDB
             pdb_item_list = self.form.mainTab.findChildren(EnsembleWidget)
             if len(pdb_item_list) == 0:

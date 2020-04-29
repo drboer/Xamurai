@@ -9,7 +9,7 @@ from ..common.constants import bl13_GUI_dataproc_dir, bl13_GUI_manual_processdir
 
 def runRemoteProcessing(remoteuser, remoteserver, script2run, program2run, sourcedatadir, filelist2recover, processing_args, procdir, outputlog):
        msg=''
-       sourcedatadir = sourcedatadir.rstrip('images')
+       sourcedatadir = sourcedatadir.rstrip('images') # why strip images? If this is added again in the script2run, it should be removed there
        print 'runRemoteProcessing: sourcedatadir ',sourcedatadir
        sampledatadir = os.path.basename(os.path.normpath(sourcedatadir))
        msg += ("Source data in %s\n" % sourcedatadir)
